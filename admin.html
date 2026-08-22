@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Portal — Gem Group</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Toggle switch ── */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .toggle {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border-green);
+      border-radius: 22px;
+      transition: background .25s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .25s;
+    }
+
+    input:checked+.toggle-slider {
+      background: var(--gold);
+    }
+
+    input:checked+.toggle-slider::before {
+      transform: translateX(18px);
+    }
+
+    /* ── Compact form inside admin card ── */
+    .admin-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .admin-form-row.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .admin-form-row.cols-1 {
+      grid-template-columns: 1fr;
+    }
+
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      background: var(--gold-bg);
+      border: 1px solid var(--border-gold);
+      color: var(--gold);
+      font-size: .6rem;
+      border-radius: 10px;
+      margin-left: .5rem;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(240, 128, 128, .6);
+      font-size: .8rem;
+      padding: .2rem .5rem;
+      transition: color .2s;
+    }
+
+    .delete-btn:hover {
+      color: #f08080;
+    }
+
+    /* ── Mobile sidebar toggle ── */
+    .mob-nav {
+      display: none;
+      flex-wrap: wrap;
+      gap: .5rem;
+      padding: 1rem 1.25rem 0;
+    }
+
+    @media(max-width:768px) {
+      .mob-nav {
+        display: flex;
+      }
+
+      .admin-main {
+        padding: 2rem 1.25rem 3rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══════════════════════════════
+       LOGIN SCREEN
+  ══════════════════════════════════ -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <img class="login-logo" src="" alt="" onerror="this.style.display='none'" />
+      <h2 class="login-title">Admin Portal</h2>
+      <p class="login-sub">Sign in to manage bookings, rooms &amp; properties</p>
+
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label" for="admin-email">Email</label>
+        <input class="form-input" id="admin-email" type="email" placeholder="admin@example.pk" />
+      </div>
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label" for="admin-pass">Password</label>
+        <input class="form-input" id="admin-pass" type="password" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="doLogin()">
+        Sign In
+      </button>
+      <p class="error-msg" id="login-error">Incorrect email or password.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       ADMIN DASHBOARD
+  ══════════════════════════════════ -->
+  <div id="dashboard" style="display:none;">
+    <header class="site-header">
+      <a class="logo-wrap" href="index.html">
+        <img src="" alt="" onerror="this.style.display='none'" />
+        <div class="logo-text">Admin Portal<small>Gem Group</small></div>
+      </a>
+      <nav class="site-nav">
+        <a href="index.html">← Website</a>
+        <a href="#" onclick="doLogout()">Sign out</a>
+      </nav>
+    </header>
+
+    <!-- Mobile nav buttons -->
+    <div class="mob-nav" style="margin-top:72px;">
+      <button class="filter-btn active" onclick="switchTab('tab-bookings',this)">Bookings</button>
+      <button class="filter-btn" onclick="switchTab('tab-rooms',this)">Rooms</button>
+      <button class="filter-btn" onclick="switchTab('tab-properties',this)">Properties</button>
+    </div>
+
+    <div class="admin-layout">
+      <!-- SIDEBAR -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-section">
+          <span class="sidebar-label">Operations</span>
+          <button class="sidebar-link active" id="nav-bookings" onclick="switchTab('tab-bookings',this)">
+            <span class="icon">📋</span> Reservations
+            <span class="badge-count" id="booking-count">0</span>
+          </button>
+        </div>
+        <div class="sidebar-section">
+          <span class="sidebar-label">Inventory</span>
+          <button class="sidebar-link" id="nav-rooms" onclick="switchTab('tab-rooms',this)">
+            <span class="icon">🛏</span> Rooms
+          </button>
+          <button class="sidebar-link" id="nav-properties" onclick="switchTab('tab-properties',this)">
+            <span class="icon">🏠</span> Properties
+          </button>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="admin-main">
+
+        <!-- ── TAB: BOOKINGS ── -->
+        <div class="admin-tab active" id="tab-bookings">
+          <div class="admin-card">
+            <div class="admin-card-title">Add manual booking (phone / walk-in)</div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Guest name</label>
+                <input class="form-input" id="mb-name" type="text" placeholder="Guest full name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone number</label>
+                <input class="form-input" id="mb-phone" type="tel" placeholder="0318-5512803" />
+              </div>
+            </div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Room</label>
+                <select class="form-select" id="mb-room"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Check-in</label>
+                <input class="form-input" id="mb-in" type="date" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Check-out</label>
+                <input class="form-input" id="mb-out" type="date" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Notes</label>
+                <input class="form-input" id="mb-notes" type="text" placeholder="Any special requests or notes" />
+              </div>
+            </div>
+            <button class="btn btn-gold" onclick="addManualBooking()">➕ Add Booking</button>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-title">All reservations</div>
+            <div id="bookings-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="bookings-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Guest</th>
+                    <th>Phone</th>
+                    <th>Room</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Nights</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="bookings-body"></tbody>
+              </table>
+            </div>
+            <p id="bookings-empty" style="display:none;color:var(--muted);font-size:.8rem;padding:1rem 0;">
+              No bookings yet.
+            </p>
+          </div>
+        </div>
+
+        <!-- ── TAB: ROOMS ── -->
+        <div class="admin-tab" id="tab-rooms">
+          <div class="admin-card">
+            <div class="admin-card-title">Add new room</div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Room name</label>
+                <input class="form-input" id="nr-name" type="text" placeholder="e.g. Executive Suite" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Room type</label>
+                <select class="form-select" id="nr-type">
+                  <option>Single</option>
+                  <option>Double Bed</option>
+                  <option>Executive</option>
+                  <option>Family</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Nightly rate (PKR)</label>
+                <input class="form-input" id="nr-rate" type="number" placeholder="e.g. 8000" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Image URL</label>
+                <input class="form-input" id="nr-img" type="url" placeholder="https://…" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Features (comma-separated)</label>
+                <input class="form-input" id="nr-features" type="text" placeholder="WiFi, AC, Hot Water, TV" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <input class="form-input" id="nr-desc" type="text" placeholder="Short room description" />
+              </div>
+            </div>
+            <button class="btn btn-gold" onclick="addRoom()">➕ Add Room</button>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-title">Manage rooms</div>
+            <p style="font-size:.75rem; color:var(--muted); margin:-0.75rem 0 1.25rem;">
+              Availability now updates automatically based on bookings — a room clears itself
+              the day after checkout. Use the switch below only to force a room unavailable
+              regardless of dates (e.g. renovation, deep cleaning).
+            </p>
+            <div id="rooms-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="rooms-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Rate/night</th>
+                    <th>Force unavailable</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="rooms-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB: PROPERTIES ── -->
+        <div class="admin-tab" id="tab-properties">
+          <div class="admin-card">
+            <div class="admin-card-title">Add new property listing</div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Title</label>
+                <input class="form-input" id="np-title" type="text" placeholder="e.g. 5 Marla Residential Plot" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="np-cat">
+                  <option>Residential</option>
+                  <option>Commercial</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-form-row cols-3">
+              <div class="form-group">
+                <label class="form-label">Location</label>
+                <input class="form-input" id="np-loc" type="text" placeholder="Sector G-13, Islamabad" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Size</label>
+                <input class="form-input" id="np-size" type="text" placeholder="5 Marla" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Total price (PKR)</label>
+                <input class="form-input" id="np-price" type="number" placeholder="7500000" min="0" />
+              </div>
+            </div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Installment plan</label>
+                <input class="form-input" id="np-inst" type="text" placeholder="PKR 50,000/month for 3 years" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">WhatsApp number (with country code, no +)</label>
+                <input class="form-input" id="np-wa" type="text" placeholder="923001234567" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Image URL</label>
+                <input class="form-input" id="np-img" type="url" placeholder="https://…" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <input class="form-input" id="np-desc" type="text" placeholder="Brief property description" />
+              </div>
+            </div>
+            <button class="btn btn-gold" onclick="addProperty()">➕ Add Property</button>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-title">Manage properties</div>
+            <div id="props-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="props-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Location</th>
+                    <th>Price</th>
+                    <th>Active</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="props-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div><!-- /admin-layout -->
+  </div><!-- /dashboard -->
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    /* ═══════════════════════════════════
+       AUTH
+    ═══════════════════════════════════ */
+    async function doLogin() {
+      const email = document.getElementById('admin-email').value.trim();
+      const pass = document.getElementById('admin-pass').value;
+      const err = document.getElementById('login-error');
+      err.style.display = 'none';
+
+      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        err.style.display = 'block';
+        return;
+      }
+      showDashboard();
+    }
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+
+    async function showDashboard() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      await Promise.all([loadBookings(), loadRooms(), loadProperties()]);
+    }
+
+    /* Check if already logged in */
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      if (data.session) showDashboard();
+    })();
+
+    /* ═══════════════════════════════════
+       TAB SWITCHING
+    ═══════════════════════════════════ */
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sidebar-link, .mob-nav .filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    /* ═══════════════════════════════════
+       BOOKINGS
+    ═══════════════════════════════════ */
+    let roomsList = [];
+
+    async function loadBookings() {
+      const { data } = await sb
+        .from('bookings')
+        .select('*, rooms(name)')
+        .order('check_in', { ascending: true });
+
+      document.getElementById('bookings-loading').style.display = 'none';
+
+      const rows = data || [];
+      document.getElementById('booking-count').textContent = rows.length;
+
+      if (rows.length === 0) {
+        document.getElementById('bookings-empty').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('bookings-table').style.display = 'table';
+      document.getElementById('bookings-body').innerHTML = rows.map(b => `
+        <tr>
+          <td>${esc(b.guest_name)}</td>
+          <td>${esc(b.guest_phone)}</td>
+          <td>${esc(b.rooms?.name || '—')}</td>
+          <td>${formatDate(b.check_in)}</td>
+          <td>${formatDate(b.check_out)}</td>
+          <td>${b.nights ?? '—'}</td>
+          <td>${formatPKR(b.total_amount)}</td>
+          <td><span class="status-pill ${b.status === 'confirmed' ? 'confirmed' : 'pending'}">${esc(b.status)}</span></td>
+          <td><button class="delete-btn" onclick="deleteBooking('${b.id}',this)" title="Cancel booking">✕</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function addManualBooking() {
+      const name = document.getElementById('mb-name').value.trim();
+      const phone = document.getElementById('mb-phone').value.trim();
+      const roomId = document.getElementById('mb-room').value;
+      const checkIn = document.getElementById('mb-in').value;
+      const checkOut = document.getElementById('mb-out').value;
+      const notes = document.getElementById('mb-notes').value.trim();
+
+      if (!name || !phone || !roomId || !checkIn || !checkOut) {
+        return showToast('⚠️ Please fill all fields.');
+      }
+
+      const room = roomsList.find(r => r.id === roomId);
+      const nights = Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000);
+      if (nights < 1) return showToast('⚠️ Invalid dates.');
+
+      const total = room ? nights * room.nightly_rate : null;
+
+      const { error } = await sb.from('bookings').insert({
+        room_id: roomId, guest_name: name, guest_phone: phone,
+        check_in: checkIn, check_out: checkOut,
+        total_amount: total, notes: notes || null, status: 'confirmed'
+      });
+
+      if (error) { showToast('❌ Error saving booking.'); return; }
+
+      ['mb-name', 'mb-phone', 'mb-in', 'mb-out', 'mb-notes'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      showToast('✅ Booking added!');
+      loadBookings();
+    }
+
+    async function deleteBooking(id, btn) {
+      if (!confirm('Delete this booking? This cannot be undone.')) return;
+      const { error } = await sb.from('bookings').delete().eq('id', id);
+      if (error) { showToast('❌ Error deleting booking.'); return; }
+      btn.closest('tr').remove();
+      showToast('Booking deleted.');
+    }
+
+    /* ═══════════════════════════════════
+       ROOMS
+    ═══════════════════════════════════ */
+    async function loadRooms() {
+      const { data } = await sb.from('rooms').select('*').order('created_at');
+      document.getElementById('rooms-loading').style.display = 'none';
+      roomsList = data || [];
+
+      /* Populate room dropdown in bookings form */
+      const sel = document.getElementById('mb-room');
+      sel.innerHTML = roomsList.map(r =>
+        `<option value="${r.id}">${esc(r.name)}</option>`
+      ).join('');
+
+      if (roomsList.length === 0) return;
+
+      document.getElementById('rooms-table').style.display = 'table';
+      document.getElementById('rooms-body').innerHTML = roomsList.map(r => `
+        <tr id="room-row-${r.id}">
+          <td>${esc(r.name)}</td>
+          <td>${esc(r.room_type)}</td>
+          <td>${formatPKR(r.nightly_rate)}</td>
+          <td>
+            <label class="toggle" title="Force this room unavailable regardless of dates">
+              <input type="checkbox" ${r.is_available ? '' : 'checked'}
+                     onchange="toggleRoom('${r.id}', !this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td><button class="delete-btn" onclick="deleteRoom('${r.id}')" title="Delete room">✕</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function addRoom() {
+      const name = document.getElementById('nr-name').value.trim();
+      const type = document.getElementById('nr-type').value;
+      const rate = parseFloat(document.getElementById('nr-rate').value);
+      const img = document.getElementById('nr-img').value.trim();
+      const featStr = document.getElementById('nr-features').value.trim();
+      const desc = document.getElementById('nr-desc').value.trim();
+
+      if (!name || !rate) return showToast('⚠️ Name and rate are required.');
+
+      const features = featStr ? featStr.split(',').map(f => f.trim()).filter(Boolean) : [];
+
+      const { error } = await sb.from('rooms').insert({
+        name, room_type: type, nightly_rate: rate,
+        image_url: img || null, features, description: desc || null
+      });
+
+      if (error) { showToast('❌ Error adding room.'); return; }
+      ['nr-name', 'nr-rate', 'nr-img', 'nr-features', 'nr-desc'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      showToast('✅ Room added!');
+      loadRooms();
+    }
+
+    async function toggleRoom(id, val) {
+      const { error } = await sb.from('rooms').update({ is_available: val }).eq('id', id);
+      if (error) showToast('❌ Update failed.');
+      else showToast(val ? '✅ Override cleared — availability is automatic again.' : '🔒 Room force-marked unavailable.');
+    }
+
+    async function deleteRoom(id) {
+      if (!confirm('Delete this room? All its bookings will also be removed.')) return;
+      const { error } = await sb.from('rooms').delete().eq('id', id);
+      if (error) { showToast('❌ Error deleting room.'); return; }
+      document.getElementById(`room-row-${id}`)?.remove();
+      showToast('Room deleted.');
+    }
+
+    /* ═══════════════════════════════════
+       PROPERTIES
+    ═══════════════════════════════════ */
+    async function loadProperties() {
+      const { data } = await sb.from('properties').select('*').order('created_at', { ascending: false });
+      document.getElementById('props-loading').style.display = 'none';
+      const props = data || [];
+
+      if (props.length === 0) return;
+
+      document.getElementById('props-table').style.display = 'table';
+      document.getElementById('props-body').innerHTML = props.map(p => `
+        <tr id="prop-row-${p.id}">
+          <td>${esc(p.title)}</td>
+          <td>${esc(p.category)}</td>
+          <td>${esc(p.location)}</td>
+          <td>${formatPKR(p.total_price)}</td>
+          <td>
+            <label class="toggle" title="Toggle visibility">
+              <input type="checkbox" ${p.is_active ? 'checked' : ''}
+                     onchange="toggleProperty('${p.id}', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td><button class="delete-btn" onclick="deleteProperty('${p.id}')" title="Delete">✕</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function addProperty() {
+      const title = document.getElementById('np-title').value.trim();
+      const cat = document.getElementById('np-cat').value;
+      const loc = document.getElementById('np-loc').value.trim();
+      const size = document.getElementById('np-size').value.trim();
+      const price = parseFloat(document.getElementById('np-price').value);
+      const inst = document.getElementById('np-inst').value.trim();
+      const wa = document.getElementById('np-wa').value.trim();
+      const img = document.getElementById('np-img').value.trim();
+      const desc = document.getElementById('np-desc').value.trim();
+
+      if (!title || !loc || !size || !price) {
+        return showToast('⚠️ Title, location, size and price are required.');
+      }
+
+      const { error } = await sb.from('properties').insert({
+        title, category: cat, location: loc, size,
+        total_price: price,
+        installment: inst || null,
+        whatsapp_no: wa || WHATSAPP_NUMBER,
+        image_url: img || null,
+        description: desc || null
+      });
+
+      if (error) { showToast('❌ Error adding property.'); return; }
+      ['np-title', 'np-loc', 'np-size', 'np-price', 'np-inst', 'np-wa', 'np-img', 'np-desc'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      showToast('✅ Property added!');
+      loadProperties();
+    }
+
+    async function toggleProperty(id, val) {
+      const { error } = await sb.from('properties').update({ is_active: val }).eq('id', id);
+      if (error) showToast('❌ Update failed.');
+      else showToast(val ? '✅ Property visible.' : '🔒 Property hidden.');
+    }
+
+    async function deleteProperty(id) {
+      if (!confirm('Delete this property listing?')) return;
+      const { error } = await sb.from('properties').delete().eq('id', id);
+      if (error) { showToast('❌ Error deleting property.'); return; }
+      document.getElementById(`prop-row-${id}`)?.remove();
+      showToast('Property deleted.');
+    }
+
+    /* Escape helper */
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+
+</html>

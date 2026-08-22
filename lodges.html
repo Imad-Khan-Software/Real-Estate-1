@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gem Lodges</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Flatpickr date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <style>
+    /* Override Flatpickr to match brand */
+    .flatpickr-calendar {
+      background: var(--forest-mid) !important;
+      border: 1px solid var(--border-gold) !important;
+      border-radius: 8px !important;
+      color: var(--on-dark) !important;
+    }
+    .flatpickr-day { color: var(--on-dark) !important; border-radius: 4px !important; }
+    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
+      background: var(--gold) !important; border-color: var(--gold) !important;
+      color: var(--forest-deep) !important;
+    }
+    .flatpickr-day.inRange {
+      background: var(--gold-bg) !important; border-color: transparent !important;
+    }
+    .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover {
+      background: rgba(180,40,40,.2) !important; color: rgba(255,100,100,.6) !important;
+      text-decoration: line-through;
+    }
+    .flatpickr-months .flatpickr-month,
+    .flatpickr-weekdays,
+    span.flatpickr-weekday { background: transparent !important; color: var(--muted) !important; }
+    .flatpickr-current-month { color: var(--gold-light) !important; }
+    .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: var(--gold) !important; }
+    .numInputWrapper:hover { background: var(--gold-bg) !important; }
+    .flatpickr-day.today { border-color: var(--gold-dim) !important; }
+    .flatpickr-day:hover { background: var(--forest-light) !important; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <a class="logo-wrap" href="index.html">
+      <img src="" alt="" onerror="this.style.display='none'" />
+      <div class="logo-text">Gem Lodges<small></small></div>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="property.html">Real Estate</a>
+      <a href="lodges.html" class="active">Lodges</a>
+    </nav>
+  </header>
+
+  <div class="page-content">
+
+    <!-- PAGE HEADER -->
+    <div class="section-header">
+      <span class="eyebrow">Gem Lodges</span>
+      <h1 class="section-title">Our <em>Rooms</em></h1>
+      <div class="gold-rule"></div>
+      <p class="section-sub">Live availability — unavailable rooms are clearly marked. Pick your dates and book in seconds.</p>
+    </div>
+
+    <!-- ROOM GRID -->
+    <div id="room-loading" class="loading">
+      <div class="spinner"></div>
+      <span>Checking availability…</span>
+    </div>
+
+    <div class="card-grid" id="room-grid" style="display:none;"></div>
+
+    <p id="room-empty" style="display:none; text-align:center; color:var(--muted); padding:3rem; font-size:.85rem;">
+      No rooms found. Please check back soon.
+    </p>
+
+  </div><!-- /page-content -->
+
+  <!-- BOOKING MODAL -->
+  <div class="modal-overlay" id="booking-modal" role="dialog" aria-modal="true" aria-labelledby="modal-room-name">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('booking-modal')" aria-label="Close">&times;</button>
+      <h2 class="modal-title" id="modal-room-name">Reserve Room</h2>
+      <p class="modal-subtitle" id="modal-room-rate"></p>
+
+      <div class="form-group">
+        <label class="form-label" for="guest-name">Your name</label>
+        <input class="form-input" id="guest-name" type="text" placeholder="e.g. Ahmed Khan" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="guest-phone">Phone number</label>
+        <input class="form-input" id="guest-phone" type="tel" placeholder="e.g. 0300-1234567" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="check-in">Check-in date</label>
+          <input class="form-input" id="check-in" type="text" placeholder="Select date" readonly />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="check-out">Check-out date</label>
+          <input class="form-input" id="check-out" type="text" placeholder="Select date" readonly />
+        </div>
+      </div>
+
+      <div id="booking-summary" style="
+        background:rgba(15,35,24,.6); border:1px solid var(--border-gold);
+        border-radius:6px; padding:1rem; margin-bottom:1.25rem;
+        font-size:.8rem; color:var(--muted-light); display:none;
+      ">
+        <div style="display:flex; justify-content:space-between; margin-bottom:.4rem;">
+          <span>Nights</span><span id="sum-nights" style="color:var(--on-dark);">—</span>
+        </div>
+        <div style="display:flex; justify-content:space-between;">
+          <span>Total</span><span id="sum-total" style="color:var(--gold-light); font-size:.95rem;font-family:'Cormorant Garamond',serif;">—</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="booking-notes">Special requests (optional)</label>
+        <input class="form-input" id="booking-notes" type="text" placeholder="e.g. Early check-in, extra pillows…" />
+      </div>
+
+      <button class="btn btn-gold" id="confirm-btn" onclick="submitBooking()" style="width:100%; justify-content:center;">
+        Confirm Reservation
+      </button>
+      <p id="booking-error" style="color:#f08080; font-size:.75rem; margin-top:.75rem; display:none;"></p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <span>© 2026 Gem Lodges, Islamabad</span>
+    <span><a href="index.html">← Home</a> &nbsp;·&nbsp; <a href="https://wa.me/923185512803" target="_blank">WhatsApp</a></span>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="supabase.js"></script>
+  <script>
+    let allRooms    = [];
+    let allBookings = [];
+    let activeRoom  = null;
+    let fpIn = null, fpOut = null;
+
+    /* ── Load rooms + bookings simultaneously ── */
+    async function loadData() {
+      try {
+        const [roomRes, bookRes] = await Promise.all([
+          sb.from('rooms').select('*').eq('is_active', true).order('created_at'),
+          sb.from('bookings').select('room_id, check_in, check_out, status').neq('status','cancelled')
+        ]);
+        allRooms    = roomRes.data || [];
+        allBookings = bookRes.data || [];
+      } catch (err) {
+        console.error('Error loading data:', err);
+      }
+
+      document.getElementById('room-loading').style.display = 'none';
+      renderRooms();
+    }
+
+    /* ── Get booked date ranges for a specific room ── */
+    function getBlockedRanges(roomId) {
+      return allBookings
+        .filter(b => b.room_id === roomId)
+        .map(b => ({ from: b.check_in, to: b.check_out }));
+    }
+
+    /* ── Is this room occupied right now (today falls inside a booking)? ── */
+    function isOccupiedToday(roomId) {
+      const today = new Date().toISOString().slice(0, 10);
+      return allBookings.some(b =>
+        b.room_id === roomId && b.check_in <= today && today < b.check_out
+      );
+    }
+
+    /* ── Effective availability = manual override AND not currently occupied ── */
+    function isEffectivelyAvailable(r) {
+      return r.is_available && !isOccupiedToday(r.id);
+    }
+
+    /* ── Render room cards ── */
+    function renderRooms() {
+      const grid  = document.getElementById('room-grid');
+      const empty = document.getElementById('room-empty');
+
+      if (allRooms.length === 0) {
+        grid.style.display  = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      grid.style.display  = 'grid';
+      empty.style.display = 'none';
+      grid.innerHTML = allRooms.map(r => buildRoomCard(r)).join('');
+    }
+
+    /* ── Build a room card ── */
+    function buildRoomCard(r) {
+      const available = isEffectivelyAvailable(r);
+
+      const imgHTML = r.image_url
+        ? `<img class="lodge-card-img" src="${esc(r.image_url)}" alt="${esc(r.name)}" loading="lazy" />`
+        : `<div class="lodge-card-img-placeholder">📷 No image yet</div>`;
+
+      const feats = (r.features || []).map(f =>
+        `<span class="feature-pill">${esc(f)}</span>`
+      ).join('');
+
+      const bookBtn = available
+        ? `<button class="btn btn-gold" onclick="openBooking('${r.id}')">Reserve This Room</button>`
+        : `<button class="btn btn-outline" disabled style="opacity:.5;cursor:not-allowed;">Currently Unavailable</button>`;
+
+      const badge = available
+        ? `<span class="available-badge">Available</span>`
+        : `<span class="unavailable-badge">Unavailable</span>`;
+
+      return `
+        <div class="lodge-card${available ? '' : ' unavailable'}">
+          ${badge}
+          ${imgHTML}
+          <div class="lodge-card-body">
+            <span class="lodge-type-tag">${esc(r.room_type)}</span>
+            <h3 class="lodge-name">${esc(r.name)}</h3>
+            <div class="lodge-features">${feats}</div>
+            <p class="lodge-desc">${esc(r.description || '')}</p>
+            <div class="lodge-rate-row">
+              <span class="lodge-rate">${formatPKR(r.nightly_rate)}</span>
+              <span class="lodge-rate-label">/ night</span>
+            </div>
+            ${bookBtn}
+          </div>
+        </div>`;
+    }
+
+    /* ── Open booking modal for a room ── */
+    function openBooking(roomId) {
+      activeRoom = allRooms.find(r => r.id === roomId);
+      if (!activeRoom) return;
+
+      document.getElementById('modal-room-name').textContent = activeRoom.name;
+      document.getElementById('modal-room-rate').textContent =
+        `${formatPKR(activeRoom.nightly_rate)} per night`;
+
+      /* Reset form */
+      ['guest-name','guest-phone','check-in','check-out','booking-notes'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('booking-summary').style.display = 'none';
+      document.getElementById('booking-error').style.display = 'none';
+
+      /* Build disabled date ranges for this room */
+      const blocked = getBlockedRanges(roomId);
+      const disabledDates = blocked.map(b => ({ from: b.from, to: b.to }));
+
+      /* Destroy old pickers */
+      if (fpIn)  { fpIn.destroy();  fpIn  = null; }
+      if (fpOut) { fpOut.destroy(); fpOut = null; }
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      fpIn = flatpickr('#check-in', {
+        minDate: 'today',
+        disable: disabledDates,
+        dateFormat: 'Y-m-d',
+        disableMobile: true,
+        onChange([selectedDate]) {
+          const next = new Date(selectedDate);
+          next.setDate(next.getDate() + 1);
+          fpOut.set('minDate', next);
+          fpOut.clear();
+          updateSummary();
+        }
+      });
+
+      fpOut = flatpickr('#check-out', {
+        minDate: tomorrow,
+        disable: disabledDates,
+        dateFormat: 'Y-m-d',
+        disableMobile: true,
+        onChange() { updateSummary(); }
+      });
+
+      openModal('booking-modal');
+    }
+
+    /* ── Update the price summary ── */
+    function updateSummary() {
+      const inVal  = document.getElementById('check-in').value;
+      const outVal = document.getElementById('check-out').value;
+      const summary = document.getElementById('booking-summary');
+
+      if (inVal && outVal && activeRoom) {
+        const nights = Math.round(
+          (new Date(outVal) - new Date(inVal)) / 86400000
+        );
+        const total = nights * activeRoom.nightly_rate;
+        document.getElementById('sum-nights').textContent = nights;
+        document.getElementById('sum-total').textContent  = formatPKR(total);
+        summary.style.display = 'block';
+      } else {
+        summary.style.display = 'none';
+      }
+    }
+
+    /* ── Submit booking to Supabase ── */
+    async function submitBooking() {
+      const name    = document.getElementById('guest-name').value.trim();
+      const phone   = document.getElementById('guest-phone').value.trim();
+      const checkIn = document.getElementById('check-in').value;
+      const checkOut= document.getElementById('check-out').value;
+      const notes   = document.getElementById('booking-notes').value.trim();
+      const errEl   = document.getElementById('booking-error');
+
+      errEl.style.display = 'none';
+
+      if (!name || !phone || !checkIn || !checkOut) {
+        errEl.textContent   = 'Please fill in all required fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const nights = Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000);
+      if (nights < 1) {
+        errEl.textContent   = 'Check-out must be after check-in.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const total = nights * activeRoom.nightly_rate;
+      const btn   = document.getElementById('confirm-btn');
+      btn.textContent = 'Processing…';
+      btn.disabled    = true;
+
+      try {
+        const { error } = await sb.from('bookings').insert({
+          room_id:      activeRoom.id,
+          guest_name:   name,
+          guest_phone:  phone,
+          check_in:     checkIn,
+          check_out:    checkOut,
+          total_amount: total,
+          notes:        notes || null,
+          status:       'confirmed'
+        });
+
+        if (error) throw error;
+
+        /* Add newly blocked dates to local array so calendar updates */
+        allBookings.push({
+          room_id:  activeRoom.id,
+          check_in: checkIn,
+          check_out: checkOut,
+          status:   'confirmed'
+        });
+
+        closeModal('booking-modal');
+        showToast(`✅ Reservation confirmed for ${name}!`);
+
+      } catch (err) {
+        console.error('Booking error:', err);
+        errEl.textContent   = 'Could not save booking. Please try again.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.textContent = 'Confirm Reservation';
+        btn.disabled    = false;
+      }
+    }
+
+    /* Escape helper */
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── Init ── */
+    loadData();
+  </script>
+</body>
+</html>

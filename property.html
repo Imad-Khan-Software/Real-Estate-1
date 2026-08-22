@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemland Property Advisor — Islamabad</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <a class="logo-wrap" href="index.html">
+      <img src="" alt="" onerror="this.style.display='none'" />
+      <div class="logo-text">Property<small>Advisor</small></div>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="property.html" class="active">Real Estate</a>
+      <a href="lodges.html">Lodges</a>
+    </nav>
+  </header>
+
+  <div class="page-content">
+
+    <!-- PAGE HEADER -->
+    <div class="section-header">
+      <span class="eyebrow">Property Advisor</span>
+      <h1 class="section-title">Property <em>Listings</em></h1>
+      <div class="gold-rule"></div>
+      <p class="section-sub">Residential plots &amp; commercial shops across Abbotabad prime sectors. Inquire instantly via WhatsApp.</p>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar" role="group" aria-label="Filter properties">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="Residential">Residential</button>
+      <button class="filter-btn" data-filter="Commercial">Commercial</button>
+    </div>
+
+    <!-- PROPERTY GRID -->
+    <div id="prop-loading" class="loading">
+      <div class="spinner"></div>
+      <span>Loading properties…</span>
+    </div>
+
+    <div class="card-grid" id="prop-grid" style="display:none;"></div>
+
+    <p id="prop-empty" style="display:none; text-align:center; color:var(--muted); padding:3rem; font-size:.85rem; letter-spacing:.1em;">
+      No properties found in this category.
+    </p>
+
+  </div><!-- /page-content -->
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <span>© 2026 Imad Khan</span>
+    <span><a href="index.html">← Home</a> &nbsp;·&nbsp; <a href="https://wa.me/923185512803" target="_blank">WhatsApp</a></span>
+  </footer>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    let allProperties = [];
+    let activeFilter  = 'all';
+
+    /* ── Load properties from Supabase ── */
+    async function loadProperties() {
+      try {
+        const { data, error } = await sb
+          .from('properties')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        allProperties = data || [];
+      } catch (err) {
+        console.error('Error loading properties:', err);
+        allProperties = [];
+      }
+
+      document.getElementById('prop-loading').style.display = 'none';
+      renderProperties();
+    }
+
+    /* ── Render filtered list ── */
+    function renderProperties() {
+      const grid  = document.getElementById('prop-grid');
+      const empty = document.getElementById('prop-empty');
+
+      const filtered = activeFilter === 'all'
+        ? allProperties
+        : allProperties.filter(p => p.category === activeFilter);
+
+      if (filtered.length === 0) {
+        grid.style.display  = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      grid.style.display  = 'grid';
+      empty.style.display = 'none';
+
+      grid.innerHTML = filtered.map(p => buildPropertyCard(p)).join('');
+    }
+
+    /* ── Build a property card's HTML ── */
+    function buildPropertyCard(p) {
+      const waText = encodeURIComponent(
+        `Hi, I am interested in the ${p.title} (${p.size}) in ${p.location}. Please share more details.`
+      );
+      const waLink = `https://wa.me/${p.whatsapp_no || WHATSAPP_NUMBER}?text=${waText}`;
+
+      const imgHTML = p.image_url
+        ? `<img class="prop-card-img" src="${escHtml(p.image_url)}" alt="${escHtml(p.title)}" loading="lazy" />`
+        : `<div class="prop-card-img-placeholder">📷 No image yet</div>`;
+
+      const installHTML = p.installment
+        ? `<p class="prop-installment">📅 Installment: ${escHtml(p.installment)}</p>`
+        : '';
+
+      const descHTML = p.description
+        ? `<p class="prop-desc">${escHtml(p.description)}</p>`
+        : '';
+
+      return `
+        <div class="prop-card" data-category="${escHtml(p.category)}">
+          ${imgHTML}
+          <div class="prop-card-body">
+            <span class="prop-tag">${escHtml(p.category)}</span>
+            <h3 class="prop-title">${escHtml(p.title)}</h3>
+            <p class="prop-location">📍 ${escHtml(p.location)} &nbsp;·&nbsp; ${escHtml(p.size)}</p>
+            <div class="prop-divider"></div>
+            <div class="prop-price-row">
+              <span class="prop-price">${formatPKR(p.total_price)}</span>
+              <span class="prop-price-label">Total</span>
+            </div>
+            ${installHTML}
+            ${descHTML}
+            <a class="btn btn-whatsapp" href="${waLink}" target="_blank" rel="noopener">
+              💬 Inquire via WhatsApp
+            </a>
+          </div>
+        </div>`;
+    }
+
+    /* Escape HTML to prevent XSS */
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+
+    /* ── Filter buttons ── */
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        renderProperties();
+      });
+    });
+
+    /* ── Init ── */
+    loadProperties();
+  </script>
+</body>
+</html>
