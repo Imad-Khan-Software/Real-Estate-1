@@ -96,6 +96,59 @@ extension, so it's easy to miss in Finder/Explorer — don't skip it).
 
 ---
 
+## Step 8 — Admin roles & payment security (v3 upgrade)
+
+Run `migration_v3_security_payments.sql` in the SQL Editor **after**
+`migration_v2_property_upgrade.sql`. It adds:
+
+* Two admin roles — `admin` and `root_admin` — enforced entirely in the
+  database (RLS + `SECURITY DEFINER` functions), never trusted from the browser.
+* A payment-proof booking flow for Gem Lodges: a booking starts as
+  `pending_payment`, becomes `payment_submitted` once a customer uploads a
+  screenshot, and only becomes `confirmed` after an admin manually verifies
+  the real transaction and ticks "I have verified the payment."
+* Double-booking protection and server-computed pricing (the browser can
+  never dictate a room's price).
+* A 30-minute (configurable) hold that auto-expires unpaid bookings.
+* A private `payment-proofs` Storage bucket — screenshots are never public.
+
+### Bootstrapping your first Root Admin
+
+There is intentionally no signup form for this. To create the first Root Admin:
+
+1. Supabase Dashboard → **Authentication → Users → Invite user** (use your own email).
+2. Open the emailed link and set your password.
+3. Back in the SQL Editor, run (replacing the email):
+   ```sql
+   INSERT INTO admin_profiles (id, email, role, is_active)
+   SELECT id, email, 'root_admin', TRUE
+   FROM auth.users
+   WHERE email = 'YOUR-EMAIL@example.com'
+   ON CONFLICT (id) DO UPDATE SET role = 'root_admin', is_active = TRUE;
+   ```
+4. Log in at `/admin` with that email. You'll see a ★ Root Admin badge and
+   an **Admin Management** section in the sidebar.
+
+### Adding normal admins
+
+As Root Admin: invite the person the same way via Supabase Dashboard →
+Authentication → Invite user, then go to **Admin Management** in `/admin`
+and add their email. They'll get the `admin` role automatically — only a
+Root Admin can ever promote someone to `root_admin`.
+
+### Testing the payment flow
+
+1. On `/lodges.html`, reserve a room → note the total is computed by the
+   database from the room's current rate, not anything sent by the browser.
+2. Submit fake payment details + any screenshot → booking shows
+   🔵 Verification Pending — it is **not** confirmed yet.
+3. Log into `/admin` → **Payments** tab → tick "I have verified the
+   payment…" → **Verify Payment** → booking becomes 🟢 Confirmed.
+4. Try booking the same room for overlapping dates from a second browser —
+   the database rejects it while the first booking is active.
+
+---
+
 ## How to add content (no coding needed)
 
 ### Add a property listing

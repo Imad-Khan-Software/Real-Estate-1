@@ -145,6 +145,9 @@
         Sign In
       </button>
       <p class="error-msg" id="login-error">Incorrect email or password.</p>
+      <p class="error-msg" id="login-denied" style="display:none;">
+        This account is not an authorized administrator, or has been disabled. Contact your Root Admin.
+      </p>
     </div>
   </div>
 
@@ -158,6 +161,7 @@
         <div class="logo-text">Admin Portal<small>Gem Group</small></div>
       </a>
       <nav class="site-nav">
+        <span id="admin-identity" style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;"></span>
         <a href="index.html">← Website</a>
         <a href="#" onclick="doLogout()">Sign out</a>
       </nav>
@@ -165,19 +169,37 @@
 
     <!-- Mobile nav buttons -->
     <div class="mob-nav" style="margin-top:72px;">
-      <button class="filter-btn active" onclick="switchTab('tab-bookings',this)">Bookings</button>
+      <button class="filter-btn active" onclick="switchTab('tab-overview',this)">Overview</button>
+      <button class="filter-btn" onclick="switchTab('tab-bookings',this)">Bookings</button>
+      <button class="filter-btn" onclick="switchTab('tab-payments',this)">Payments</button>
       <button class="filter-btn" onclick="switchTab('tab-rooms',this)">Rooms</button>
       <button class="filter-btn" onclick="switchTab('tab-properties',this)">Properties</button>
+      <button class="filter-btn" onclick="switchTab('tab-inquiries',this)">Inquiries</button>
+      <button class="filter-btn" id="mob-nav-admins" style="display:none;" onclick="switchTab('tab-admins',this)">Admins</button>
     </div>
 
     <div class="admin-layout">
       <!-- SIDEBAR -->
       <aside class="admin-sidebar">
         <div class="sidebar-section">
+          <span class="sidebar-label">Overview</span>
+          <button class="sidebar-link active" id="nav-overview" onclick="switchTab('tab-overview',this)">
+            <span class="icon">📊</span> Dashboard
+          </button>
+        </div>
+        <div class="sidebar-section">
           <span class="sidebar-label">Operations</span>
-          <button class="sidebar-link active" id="nav-bookings" onclick="switchTab('tab-bookings',this)">
+          <button class="sidebar-link" id="nav-bookings" onclick="switchTab('tab-bookings',this)">
             <span class="icon">📋</span> Reservations
             <span class="badge-count" id="booking-count">0</span>
+          </button>
+          <button class="sidebar-link" id="nav-payments" onclick="switchTab('tab-payments',this)">
+            <span class="icon">💳</span> Payments
+            <span class="badge-count" id="payment-count">0</span>
+          </button>
+          <button class="sidebar-link" id="nav-inquiries" onclick="switchTab('tab-inquiries',this)">
+            <span class="icon">📩</span> Inquiries
+            <span class="badge-count" id="inquiry-count">0</span>
           </button>
         </div>
         <div class="sidebar-section">
@@ -189,13 +211,44 @@
             <span class="icon">🏠</span> Properties
           </button>
         </div>
+        <div class="sidebar-section" id="sidebar-root-section" style="display:none;">
+          <span class="sidebar-label">Root Admin</span>
+          <button class="sidebar-link" id="nav-admins" onclick="switchTab('tab-admins',this)">
+            <span class="icon">🛡</span> Admin Management
+          </button>
+        </div>
       </aside>
 
       <!-- MAIN CONTENT -->
       <main class="admin-main">
 
+        <!-- ── TAB: OVERVIEW ── -->
+        <div class="admin-tab active" id="tab-overview">
+          <div class="admin-card" id="payment-alert-card" style="display:none; cursor:pointer;" onclick="switchTab('tab-payments', document.getElementById('nav-payments'))">
+            <p style="font-size:.9rem;color:var(--gold-light);margin:0;">🔔 <strong id="payment-alert-count">0</strong> payment<span id="payment-alert-plural">s</span> waiting for verification — click to review</p>
+          </div>
+          <div class="stat-cards" id="overview-stats">
+            <div class="stat-card"><div class="num" id="ov-properties">—</div><div class="lbl">Total Properties</div></div>
+            <div class="stat-card"><div class="num" id="ov-active">—</div><div class="lbl">Active Listings</div></div>
+            <div class="stat-card"><div class="num" id="ov-featured">—</div><div class="lbl">Featured Properties</div></div>
+            <div class="stat-card"><div class="num" id="ov-inquiries">—</div><div class="lbl">Total Inquiries</div></div>
+            <div class="stat-card"><div class="num" id="ov-rooms">—</div><div class="lbl">Lodge Rooms</div></div>
+            <div class="stat-card"><div class="num" id="ov-active-bookings">—</div><div class="lbl">Active Bookings</div></div>
+            <div class="stat-card"><div class="num" id="ov-pending-payments">—</div><div class="lbl">Pending Payments</div></div>
+            <div class="stat-card"><div class="num" id="ov-confirmed">—</div><div class="lbl">Confirmed Bookings</div></div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-title">Welcome back</div>
+            <p style="font-size:.8rem;color:var(--muted);line-height:1.7;">
+              Use the sidebar to manage reservations, lodge rooms, property listings and incoming
+              inquiries from the public website. All figures above reflect live data from your
+              Supabase database.
+            </p>
+          </div>
+        </div>
+
         <!-- ── TAB: BOOKINGS ── -->
-        <div class="admin-tab active" id="tab-bookings">
+        <div class="admin-tab" id="tab-bookings">
           <div class="admin-card">
             <div class="admin-card-title">Add manual booking (phone / walk-in)</div>
             <div class="admin-form-row">
@@ -233,6 +286,18 @@
 
           <div class="admin-card">
             <div class="admin-card-title">All reservations</div>
+            <div class="filter-bar" style="justify-content:flex-start;padding:0 0 1.25rem;">
+              <button class="filter-btn active" data-bstatus="all" onclick="setBookingFilter('all',this)">All</button>
+              <button class="filter-btn" data-bstatus="pending_payment" onclick="setBookingFilter('pending_payment',this)">Pending Payment</button>
+              <button class="filter-btn" data-bstatus="payment_submitted" onclick="setBookingFilter('payment_submitted',this)">Payment Submitted</button>
+              <button class="filter-btn" data-bstatus="confirmed" onclick="setBookingFilter('confirmed',this)">Confirmed</button>
+              <button class="filter-btn" data-bstatus="rejected" onclick="setBookingFilter('rejected',this)">Rejected</button>
+              <button class="filter-btn" data-bstatus="expired" onclick="setBookingFilter('expired',this)">Expired</button>
+              <button class="filter-btn" data-bstatus="cancelled" onclick="setBookingFilter('cancelled',this)">Cancelled</button>
+            </div>
+            <div class="form-group" style="max-width:320px;">
+              <input class="form-input" id="booking-search" type="text" placeholder="Search by guest, phone or room…" oninput="renderBookings()" />
+            </div>
             <div id="bookings-loading" class="loading" style="padding:2rem;">
               <div class="spinner"></div><span>Loading…</span>
             </div>
@@ -240,6 +305,7 @@
               <table class="data-table" id="bookings-table" style="display:none;">
                 <thead>
                   <tr>
+                    <th>Booking</th>
                     <th>Guest</th>
                     <th>Phone</th>
                     <th>Room</th>
@@ -255,7 +321,31 @@
               </table>
             </div>
             <p id="bookings-empty" style="display:none;color:var(--muted);font-size:.8rem;padding:1rem 0;">
-              No bookings yet.
+              No bookings match this filter.
+            </p>
+          </div>
+        </div>
+
+        <!-- ── TAB: PAYMENTS ── -->
+        <div class="admin-tab" id="tab-payments">
+          <div class="admin-card">
+            <div class="admin-card-title">Booking Payments</div>
+            <p style="font-size:.75rem; color:var(--muted); margin:-0.75rem 0 1.25rem;">
+              Payment screenshots are customer-provided evidence only — always verify the actual
+              transaction in your payment account before confirming a booking.
+            </p>
+            <div class="filter-bar" style="justify-content:flex-start;padding:0 0 1.25rem;">
+              <button class="filter-btn active" data-pstatus="submitted" onclick="setPaymentFilter('submitted',this)">Awaiting Verification</button>
+              <button class="filter-btn" data-pstatus="verified" onclick="setPaymentFilter('verified',this)">Verified</button>
+              <button class="filter-btn" data-pstatus="rejected" onclick="setPaymentFilter('rejected',this)">Rejected</button>
+              <button class="filter-btn" data-pstatus="all" onclick="setPaymentFilter('all',this)">All</button>
+            </div>
+            <div id="payments-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div id="payments-list"></div>
+            <p id="payments-empty" style="display:none;color:var(--muted);font-size:.8rem;padding:1rem 0;">
+              No payment submissions in this view.
             </p>
           </div>
         </div>
@@ -350,6 +440,35 @@
             </div>
             <div class="admin-form-row cols-3">
               <div class="form-group">
+                <label class="form-label">Property type</label>
+                <select class="form-select" id="np-type">
+                  <option>Plot</option>
+                  <option>House</option>
+                  <option>Apartment</option>
+                  <option>Villa</option>
+                  <option>Office</option>
+                  <option>Shop</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Purpose</label>
+                <select class="form-select" id="np-purpose">
+                  <option value="Sale">For Sale</option>
+                  <option value="Rent">For Rent</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="np-status">
+                  <option>Available</option>
+                  <option>Reserved</option>
+                  <option>Sold</option>
+                  <option>Rented</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-form-row cols-3">
+              <div class="form-group">
                 <label class="form-label">Location</label>
                 <input class="form-input" id="np-loc" type="text" placeholder="Sector G-13, Islamabad" />
               </div>
@@ -364,6 +483,16 @@
             </div>
             <div class="admin-form-row">
               <div class="form-group">
+                <label class="form-label">Bedrooms (leave blank for plots/shops)</label>
+                <input class="form-input" id="np-beds" type="number" placeholder="e.g. 4" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bathrooms</label>
+                <input class="form-input" id="np-baths" type="number" placeholder="e.g. 3" min="0" />
+              </div>
+            </div>
+            <div class="admin-form-row">
+              <div class="form-group">
                 <label class="form-label">Installment plan</label>
                 <input class="form-input" id="np-inst" type="text" placeholder="PKR 50,000/month for 3 years" />
               </div>
@@ -372,10 +501,32 @@
                 <input class="form-input" id="np-wa" type="text" placeholder="923001234567" />
               </div>
             </div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Agent name</label>
+                <input class="form-input" id="np-agent" type="text" placeholder="Imad Khan" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Agent phone (with country code, no +)</label>
+                <input class="form-input" id="np-agent-phone" type="text" placeholder="923001234567" />
+              </div>
+            </div>
             <div class="admin-form-row cols-1">
               <div class="form-group">
-                <label class="form-label">Image URL</label>
+                <label class="form-label">Primary image URL</label>
                 <input class="form-input" id="np-img" type="url" placeholder="https://…" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Additional gallery images (comma-separated URLs)</label>
+                <input class="form-input" id="np-images" type="text" placeholder="https://img1.jpg, https://img2.jpg" />
+              </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <div class="form-group">
+                <label class="form-label">Features (comma-separated)</label>
+                <input class="form-input" id="np-features" type="text" placeholder="Parking, Security, Electricity, Water Supply" />
               </div>
             </div>
             <div class="admin-form-row cols-1">
@@ -383,6 +534,12 @@
                 <label class="form-label">Description</label>
                 <input class="form-input" id="np-desc" type="text" placeholder="Brief property description" />
               </div>
+            </div>
+            <div class="admin-form-row cols-1">
+              <label class="checkbox-row">
+                <input type="checkbox" id="np-featured" />
+                Mark as Featured (shown with a ★ badge and in the Featured filter)
+              </label>
             </div>
             <button class="btn btn-gold" onclick="addProperty()">➕ Add Property</button>
           </div>
@@ -397,9 +554,11 @@
                 <thead>
                   <tr>
                     <th>Title</th>
-                    <th>Category</th>
+                    <th>Type</th>
                     <th>Location</th>
                     <th>Price</th>
+                    <th>Status</th>
+                    <th>Featured</th>
                     <th>Active</th>
                     <th></th>
                   </tr>
@@ -407,6 +566,94 @@
                 <tbody id="props-body"></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- ── TAB: INQUIRIES ── -->
+        <div class="admin-tab" id="tab-inquiries">
+          <div class="admin-card">
+            <div class="admin-card-title">Property inquiries</div>
+            <p style="font-size:.75rem; color:var(--muted); margin:-0.75rem 0 1.25rem;">
+              Leads submitted through the "Interested in this property?" form on each property's detail page.
+            </p>
+            <div id="inquiries-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="inquiries-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Property</th>
+                    <th>Message</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="inquiries-body"></tbody>
+              </table>
+            </div>
+            <p id="inquiries-empty" style="display:none;color:var(--muted);font-size:.8rem;padding:1rem 0;">
+              No inquiries yet.
+            </p>
+          </div>
+        </div>
+
+        <!-- ── TAB: ADMIN MANAGEMENT (Root Admin only) ── -->
+        <div class="admin-tab" id="tab-admins">
+          <div class="admin-card">
+            <div class="admin-card-title">Add an administrator</div>
+            <p style="font-size:.75rem; color:var(--muted); margin:-0.75rem 0 1.25rem;">
+              The person must already have a Supabase Auth account — invite them first via
+              <strong>Supabase Dashboard → Authentication → Users → Invite user</strong>, then add
+              their email below to grant Admin access. New admins are never created as Root Admin.
+            </p>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Email (already invited via Supabase Auth)</label>
+                <input class="form-input" id="new-admin-email" type="email" placeholder="manager@example.com" />
+              </div>
+            </div>
+            <button class="btn btn-gold" onclick="addAdminAccount()">➕ Add Admin</button>
+            <p class="error-msg" id="add-admin-error" style="display:none;"></p>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-title">Administrators</div>
+            <div id="admins-loading" class="loading" style="padding:2rem;">
+              <div class="spinner"></div><span>Loading…</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="data-table" id="admins-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="admins-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-title">System Settings</div>
+            <div class="admin-form-row">
+              <div class="form-group">
+                <label class="form-label">Payment hold window (minutes)</label>
+                <input class="form-input" id="setting-payment-window" type="number" min="5" placeholder="30" />
+              </div>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin:-0.5rem 0 1rem;">
+              How long a room stays held after a customer starts a booking before it auto-expires
+              if no payment is submitted.
+            </p>
+            <button class="btn btn-outline" onclick="saveSettings()">Save Settings</button>
           </div>
         </div>
 
@@ -421,30 +668,68 @@
     /* ═══════════════════════════════════
        AUTH
     ═══════════════════════════════════ */
+    let currentAdmin = null; // { id, email, role, is_active }
+
     async function doLogin() {
       const email = document.getElementById('admin-email').value.trim();
       const pass = document.getElementById('admin-pass').value;
       const err = document.getElementById('login-error');
+      const denied = document.getElementById('login-denied');
       err.style.display = 'none';
+      denied.style.display = 'none';
 
       const { error } = await sb.auth.signInWithPassword({ email, password: pass });
       if (error) {
         err.style.display = 'block';
         return;
       }
+
+      /* Authentication succeeded — but being a valid Supabase Auth user is
+         NOT the same as being an admin. Only admin_profiles (checked
+         server-side via RLS) decides that. */
+      const profile = await getAdminProfile();
+      if (!profile) {
+        await sb.auth.signOut();
+        denied.style.display = 'block';
+        return;
+      }
+
+      currentAdmin = profile;
       showDashboard();
     }
 
     async function doLogout() {
       await sb.auth.signOut();
+      currentAdmin = null;
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('login-screen').style.display = 'flex';
     }
 
     async function showDashboard() {
+      if (!currentAdmin) {
+        currentAdmin = await getAdminProfile();
+      }
+      if (!currentAdmin) {
+        /* A session exists (e.g. page reload) but it isn't an active admin */
+        await sb.auth.signOut();
+        document.getElementById('login-denied').style.display = 'block';
+        return;
+      }
+
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
-      await Promise.all([loadBookings(), loadRooms(), loadProperties()]);
+
+      const isRoot = currentAdmin.role === 'root_admin';
+      document.getElementById('admin-identity').innerHTML = `
+        <span class="role-badge ${isRoot ? 'root' : 'normal'}">${isRoot ? '★ Root Admin' : 'Admin'}</span>
+        <span class="admin-topbar-role">${esc(currentAdmin.email)}</span>
+      `;
+      document.getElementById('sidebar-root-section').style.display = isRoot ? 'block' : 'none';
+      document.getElementById('mob-nav-admins').style.display = isRoot ? 'inline-flex' : 'none';
+
+      const tasks = [loadBookings(), loadRooms(), loadProperties(), loadInquiries(), loadPayments(), loadOverviewStats()];
+      if (isRoot) tasks.push(loadAdminList(), loadSettings());
+      await Promise.all(tasks);
     }
 
     /* Check if already logged in */
@@ -457,6 +742,10 @@
        TAB SWITCHING
     ═══════════════════════════════════ */
     function switchTab(tabId, btn) {
+      if (tabId === 'tab-admins' && (!currentAdmin || currentAdmin.role !== 'root_admin')) {
+        showToast('🔒 Root Admin access required.');
+        return;
+      }
       document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.sidebar-link, .mob-nav .filter-btn').forEach(b => b.classList.remove('active'));
       document.getElementById(tabId).classList.add('active');
@@ -467,6 +756,15 @@
        BOOKINGS
     ═══════════════════════════════════ */
     let roomsList = [];
+    let allBookingsAdmin = [];
+    let bookingFilter = 'all';
+
+    function setBookingFilter(status, btn) {
+      bookingFilter = status;
+      document.querySelectorAll('#tab-bookings .filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderBookings();
+    }
 
     async function loadBookings() {
       const { data } = await sb
@@ -475,18 +773,34 @@
         .order('check_in', { ascending: true });
 
       document.getElementById('bookings-loading').style.display = 'none';
+      allBookingsAdmin = data || [];
+      document.getElementById('booking-count').textContent =
+        allBookingsAdmin.filter(b => ['pending_payment','payment_submitted'].includes(b.booking_status)).length;
+      renderBookings();
+    }
 
-      const rows = data || [];
-      document.getElementById('booking-count').textContent = rows.length;
+    function renderBookings() {
+      const search = (document.getElementById('booking-search')?.value || '').trim().toLowerCase();
+      let rows = allBookingsAdmin;
+
+      if (bookingFilter !== 'all') rows = rows.filter(b => b.booking_status === bookingFilter);
+      if (search) {
+        rows = rows.filter(b =>
+          `${b.guest_name} ${b.guest_phone} ${b.rooms?.name || ''} ${b.id}`.toLowerCase().includes(search)
+        );
+      }
 
       if (rows.length === 0) {
+        document.getElementById('bookings-table').style.display = 'none';
         document.getElementById('bookings-empty').style.display = 'block';
         return;
       }
 
+      document.getElementById('bookings-empty').style.display = 'none';
       document.getElementById('bookings-table').style.display = 'table';
       document.getElementById('bookings-body').innerHTML = rows.map(b => `
         <tr>
+          <td style="font-size:.7rem;color:var(--muted);">#${b.id.slice(0,8).toUpperCase()}</td>
           <td>${esc(b.guest_name)}</td>
           <td>${esc(b.guest_phone)}</td>
           <td>${esc(b.rooms?.name || '—')}</td>
@@ -494,7 +808,7 @@
           <td>${formatDate(b.check_out)}</td>
           <td>${b.nights ?? '—'}</td>
           <td>${formatPKR(b.total_amount)}</td>
-          <td><span class="status-pill ${b.status === 'confirmed' ? 'confirmed' : 'pending'}">${esc(b.status)}</span></td>
+          <td>${bookingStatusBadge(b.booking_status)}</td>
           <td><button class="delete-btn" onclick="deleteBooking('${b.id}',this)" title="Cancel booking">✕</button></td>
         </tr>
       `).join('');
@@ -521,7 +835,7 @@
       const { error } = await sb.from('bookings').insert({
         room_id: roomId, guest_name: name, guest_phone: phone,
         check_in: checkIn, check_out: checkOut,
-        total_amount: total, notes: notes || null, status: 'confirmed'
+        total_amount: total, notes: notes || null, status: 'confirmed', booking_status: 'confirmed', price_per_night: room ? room.nightly_rate : null
       });
 
       if (error) { showToast('❌ Error saving booking.'); return; }
@@ -531,6 +845,7 @@
       });
       showToast('✅ Booking added!');
       loadBookings();
+      loadOverviewStats();
     }
 
     async function deleteBooking(id, btn) {
@@ -538,7 +853,9 @@
       const { error } = await sb.from('bookings').delete().eq('id', id);
       if (error) { showToast('❌ Error deleting booking.'); return; }
       btn.closest('tr').remove();
+      allBookingsAdmin = allBookingsAdmin.filter(b => b.id !== id);
       showToast('Booking deleted.');
+      loadOverviewStats();
     }
 
     /* ═══════════════════════════════════
@@ -628,9 +945,17 @@
       document.getElementById('props-body').innerHTML = props.map(p => `
         <tr id="prop-row-${p.id}">
           <td>${esc(p.title)}</td>
-          <td>${esc(p.category)}</td>
+          <td>${esc(p.property_type || p.category)}</td>
           <td>${esc(p.location)}</td>
           <td>${formatPKR(p.total_price)}</td>
+          <td>${esc(p.status || 'Available')}</td>
+          <td>
+            <label class="toggle" title="Toggle featured">
+              <input type="checkbox" ${p.is_featured ? 'checked' : ''}
+                     onchange="toggleFeatured('${p.id}', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
           <td>
             <label class="toggle" title="Toggle visibility">
               <input type="checkbox" ${p.is_active ? 'checked' : ''}
@@ -646,39 +971,67 @@
     async function addProperty() {
       const title = document.getElementById('np-title').value.trim();
       const cat = document.getElementById('np-cat').value;
+      const type = document.getElementById('np-type').value;
+      const purpose = document.getElementById('np-purpose').value;
+      const status = document.getElementById('np-status').value;
       const loc = document.getElementById('np-loc').value.trim();
       const size = document.getElementById('np-size').value.trim();
       const price = parseFloat(document.getElementById('np-price').value);
+      const beds = parseInt(document.getElementById('np-beds').value) || null;
+      const baths = parseInt(document.getElementById('np-baths').value) || null;
       const inst = document.getElementById('np-inst').value.trim();
       const wa = document.getElementById('np-wa').value.trim();
+      const agentName = document.getElementById('np-agent').value.trim();
+      const agentPhone = document.getElementById('np-agent-phone').value.trim();
       const img = document.getElementById('np-img').value.trim();
+      const imagesStr = document.getElementById('np-images').value.trim();
+      const featuresStr = document.getElementById('np-features').value.trim();
       const desc = document.getElementById('np-desc').value.trim();
+      const featured = document.getElementById('np-featured').checked;
 
       if (!title || !loc || !size || !price) {
         return showToast('⚠️ Title, location, size and price are required.');
       }
 
+      const images = imagesStr ? imagesStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const features = featuresStr ? featuresStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
       const { error } = await sb.from('properties').insert({
-        title, category: cat, location: loc, size,
+        title, category: cat, property_type: type, purpose, status,
+        location: loc, size,
         total_price: price,
+        bedrooms: beds, bathrooms: baths,
         installment: inst || null,
         whatsapp_no: wa || WHATSAPP_NUMBER,
+        agent_name: agentName || 'Gem Group Advisory Team',
+        agent_phone: agentPhone || wa || WHATSAPP_NUMBER,
         image_url: img || null,
-        description: desc || null
+        images, features,
+        description: desc || null,
+        is_featured: featured
       });
 
-      if (error) { showToast('❌ Error adding property.'); return; }
-      ['np-title', 'np-loc', 'np-size', 'np-price', 'np-inst', 'np-wa', 'np-img', 'np-desc'].forEach(id => {
+      if (error) { console.error(error); showToast('❌ Error adding property.'); return; }
+      ['np-title', 'np-loc', 'np-size', 'np-price', 'np-beds', 'np-baths', 'np-inst', 'np-wa',
+       'np-agent', 'np-agent-phone', 'np-img', 'np-images', 'np-features', 'np-desc'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      document.getElementById('np-featured').checked = false;
       showToast('✅ Property added!');
       loadProperties();
+      loadOverviewStats();
+    }
+
+    async function toggleFeatured(id, val) {
+      const { error } = await sb.from('properties').update({ is_featured: val }).eq('id', id);
+      if (error) showToast('❌ Update failed.');
+      else { showToast(val ? '★ Marked as featured.' : 'Removed from featured.'); loadOverviewStats(); }
     }
 
     async function toggleProperty(id, val) {
       const { error } = await sb.from('properties').update({ is_active: val }).eq('id', id);
       if (error) showToast('❌ Update failed.');
-      else showToast(val ? '✅ Property visible.' : '🔒 Property hidden.');
+      else { showToast(val ? '✅ Property visible.' : '🔒 Property hidden.'); loadOverviewStats(); }
     }
 
     async function deleteProperty(id) {
@@ -687,6 +1040,343 @@
       if (error) { showToast('❌ Error deleting property.'); return; }
       document.getElementById(`prop-row-${id}`)?.remove();
       showToast('Property deleted.');
+      loadOverviewStats();
+    }
+
+    /* ═══════════════════════════════════
+       INQUIRIES
+    ═══════════════════════════════════ */
+    async function loadInquiries() {
+      const { data, error } = await sb
+        .from('inquiries')
+        .select('*, properties(title)')
+        .order('created_at', { ascending: false });
+
+      document.getElementById('inquiries-loading').style.display = 'none';
+
+      if (error) { console.error(error); return; }
+
+      const rows = data || [];
+      document.getElementById('inquiry-count').textContent = rows.length;
+
+      if (rows.length === 0) {
+        document.getElementById('inquiries-empty').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('inquiries-table').style.display = 'table';
+      document.getElementById('inquiries-body').innerHTML = rows.map(i => `
+        <tr id="inquiry-row-${i.id}">
+          <td>${esc(i.name)}</td>
+          <td>${esc(i.phone)}${i.email ? '<br><span style="color:var(--muted);font-size:.7rem;">' + esc(i.email) + '</span>' : ''}</td>
+          <td>${esc(i.properties?.title || '—')}</td>
+          <td style="max-width:220px;">${esc(i.message || '—')}</td>
+          <td>${formatDate(i.created_at)}</td>
+          <td>
+            <select class="status-select" onchange="updateInquiryStatus('${i.id}', this.value)">
+              <option value="New" ${i.status === 'New' ? 'selected' : ''}>New</option>
+              <option value="Contacted" ${i.status === 'Contacted' ? 'selected' : ''}>Contacted</option>
+              <option value="Closed" ${i.status === 'Closed' ? 'selected' : ''}>Closed</option>
+            </select>
+          </td>
+          <td><button class="delete-btn" onclick="deleteInquiry('${i.id}')" title="Delete">✕</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function updateInquiryStatus(id, status) {
+      const { error } = await sb.from('inquiries').update({ status }).eq('id', id);
+      if (error) showToast('❌ Update failed.');
+      else showToast('✅ Status updated.');
+    }
+
+    async function deleteInquiry(id) {
+      if (!confirm('Delete this inquiry?')) return;
+      const { error } = await sb.from('inquiries').delete().eq('id', id);
+      if (error) { showToast('❌ Error deleting inquiry.'); return; }
+      document.getElementById(`inquiry-row-${id}`)?.remove();
+      showToast('Inquiry deleted.');
+      loadOverviewStats();
+    }
+
+    /* ═══════════════════════════════════
+       OVERVIEW STATS
+    ═══════════════════════════════════ */
+    async function loadOverviewStats() {
+      const [props, inquiries, rooms, bookings] = await Promise.all([
+        sb.from('properties').select('id, is_active, is_featured'),
+        sb.from('inquiries').select('id', { count: 'exact', head: true }),
+        sb.from('rooms').select('id', { count: 'exact', head: true }),
+        sb.from('bookings').select('booking_status')
+      ]);
+
+      const propsData = props.data || [];
+      const bookingsData = bookings.data || [];
+
+      document.getElementById('ov-properties').textContent = propsData.length;
+      document.getElementById('ov-active').textContent = propsData.filter(p => p.is_active).length;
+      document.getElementById('ov-featured').textContent = propsData.filter(p => p.is_featured).length;
+      document.getElementById('ov-inquiries').textContent = inquiries.count ?? 0;
+      document.getElementById('ov-rooms').textContent = rooms.count ?? 0;
+
+      const activeBookings = bookingsData.filter(b => ['pending_payment','payment_submitted','confirmed'].includes(b.booking_status)).length;
+      const pendingPayments = bookingsData.filter(b => b.booking_status === 'payment_submitted').length;
+      const confirmedBookings = bookingsData.filter(b => b.booking_status === 'confirmed').length;
+
+      document.getElementById('ov-active-bookings').textContent = activeBookings;
+      document.getElementById('ov-pending-payments').textContent = pendingPayments;
+      document.getElementById('ov-confirmed').textContent = confirmedBookings;
+
+      const alertCard = document.getElementById('payment-alert-card');
+      if (pendingPayments > 0) {
+        document.getElementById('payment-alert-count').textContent = pendingPayments;
+        document.getElementById('payment-alert-plural').textContent = pendingPayments === 1 ? '' : 's';
+        alertCard.style.display = 'block';
+      } else {
+        alertCard.style.display = 'none';
+      }
+
+      document.getElementById('payment-count').textContent = pendingPayments;
+    }
+
+    /* ═══════════════════════════════════
+       PAYMENTS  (verify / reject via secure RPC)
+    ═══════════════════════════════════ */
+    let allPayments = [];
+    let paymentFilter = 'submitted';
+
+    function setPaymentFilter(status, btn) {
+      paymentFilter = status;
+      document.querySelectorAll('#tab-payments .filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPayments();
+    }
+
+    async function loadPayments() {
+      const { data, error } = await sb
+        .from('payment_submissions')
+        .select('*, bookings(id, guest_name, guest_phone, check_in, check_out, total_amount, booking_status, rooms(name))')
+        .order('submitted_at', { ascending: false });
+
+      document.getElementById('payments-loading').style.display = 'none';
+      if (error) { console.error(error); return; }
+      allPayments = data || [];
+      renderPayments();
+    }
+
+    function renderPayments() {
+      const list = document.getElementById('payments-list');
+      const empty = document.getElementById('payments-empty');
+
+      const rows = paymentFilter === 'all'
+        ? allPayments
+        : allPayments.filter(p => p.status === paymentFilter);
+
+      if (rows.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      list.innerHTML = rows.map(p => {
+        const b = p.bookings || {};
+        const statusPill = p.status === 'submitted'
+          ? bookingStatusBadge('payment_submitted')
+          : p.status === 'verified'
+            ? bookingStatusBadge('confirmed')
+            : bookingStatusBadge('rejected');
+
+        const actionButtons = p.status === 'submitted' ? `
+          <button class="btn btn-gold" onclick="beginVerify('${p.booking_id}','confirm')">✓ Verify Payment</button>
+          <button class="btn btn-outline" onclick="beginVerify('${p.booking_id}','reject')">✕ Reject Payment</button>
+        ` : `<span style="font-size:.7rem;color:var(--muted);">Reviewed ${formatDate(p.verified_at)}</span>`;
+
+        return `
+        <div class="admin-card" id="payment-card-${p.id}" style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
+            <div>
+              <strong style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--on-dark);">
+                Booking #${(b.id || '').slice(0,8).toUpperCase()} — ${esc(b.guest_name || '—')}
+              </strong>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">
+                ${esc(b.rooms?.name || '—')} &nbsp;·&nbsp; ${formatDate(b.check_in)} → ${formatDate(b.check_out)} &nbsp;·&nbsp; ${esc(b.guest_phone || '')}
+              </div>
+            </div>
+            ${statusPill}
+          </div>
+          <div class="prop-meta-row" style="margin-bottom:.75rem;">
+            <span>💳 ${esc(p.payment_method)}</span>
+            <span>🔖 Ref: ${esc(p.transaction_reference || '—')}</span>
+            <span>💰 Paid: ${formatPKR(p.amount)}</span>
+            <span>Booking Total: ${formatPKR(b.total_amount)}</span>
+          </div>
+          ${p.screenshot_path ? `<button class="btn btn-outline" onclick="viewScreenshot('${esc(p.screenshot_path)}')" style="margin-bottom:.75rem;">🖼 View Screenshot</button>` : ''}
+          ${p.rejection_reason ? `<p style="font-size:.75rem;color:#e85d5d;margin-bottom:.5rem;">Rejection note: ${esc(p.rejection_reason)}</p>` : ''}
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">${actionButtons}</div>
+          <div class="verify-confirm-box" id="verify-box-${p.booking_id}" style="display:none;"></div>
+        </div>`;
+      }).join('');
+    }
+
+    async function viewScreenshot(path) {
+      const { data, error } = await sb.storage.from('payment-proofs').createSignedUrl(path, 120);
+      if (error || !data) { showToast('❌ Could not load screenshot.'); return; }
+      window.open(data.signedUrl, '_blank', 'noopener');
+    }
+
+    /* Show the "I have verified the actual payment" confirmation box before
+       calling the real verify_payment() RPC — never confirm on one click. */
+    function beginVerify(bookingId, action) {
+      const box = document.getElementById(`verify-box-${bookingId}`);
+      if (!box) return;
+      const isConfirm = action === 'confirm';
+      box.style.display = 'block';
+      box.innerHTML = `
+        <div class="payment-warning" style="margin-bottom:.75rem;">
+          ⚠ Verify the actual payment in your Easypaisa/JazzCash/Bank account before confirming.
+          The uploaded screenshot is customer-provided and may be old, edited, duplicated, or unrelated to this booking.
+        </div>
+        ${isConfirm ? `
+          <label class="checkbox-row" style="margin-bottom:.75rem;">
+            <input type="checkbox" id="verify-check-${bookingId}" />
+            I have verified the payment in the actual payment account.
+          </label>
+        ` : `
+          <div class="form-group">
+            <label class="form-label">Rejection reason (shown to your records only)</label>
+            <input class="form-input" id="reject-reason-${bookingId}" type="text" placeholder="e.g. Transaction ID does not match our records" />
+          </div>
+        `}
+        <div style="display:flex;gap:.6rem;">
+          <button class="btn ${isConfirm ? 'btn-gold' : 'btn-outline'}" onclick="finishVerify('${bookingId}','${action}')">
+            ${isConfirm ? 'Confirm Verification' : 'Confirm Rejection'}
+          </button>
+          <button class="btn btn-outline" onclick="document.getElementById('verify-box-${bookingId}').style.display='none'">Cancel</button>
+        </div>
+      `;
+    }
+
+    async function finishVerify(bookingId, action) {
+      if (action === 'confirm') {
+        const check = document.getElementById(`verify-check-${bookingId}`);
+        if (!check || !check.checked) {
+          showToast('⚠️ Please confirm you verified the actual payment first.');
+          return;
+        }
+      }
+      const reasonEl = document.getElementById(`reject-reason-${bookingId}`);
+      const notes = reasonEl ? reasonEl.value.trim() : null;
+
+      const { error } = await sb.rpc('verify_payment', {
+        p_booking_id: bookingId,
+        p_action: action,
+        p_notes: notes || null
+      });
+
+      if (error) {
+        console.error(error);
+        showToast('❌ ' + (error.message || 'Action failed.'));
+        return;
+      }
+
+      showToast(action === 'confirm' ? '✅ Payment verified — booking confirmed.' : '🔴 Payment rejected.');
+      loadPayments();
+      loadBookings();
+      loadOverviewStats();
+    }
+
+    /* ═══════════════════════════════════
+       ADMIN MANAGEMENT  (Root Admin only — every RPC below also
+       re-checks is_root_admin() server-side, so this UI being hidden
+       from normal admins is a convenience, not the actual security boundary)
+    ═══════════════════════════════════ */
+    let allAdmins = [];
+
+    async function loadAdminList() {
+      const { data, error } = await sb
+        .from('admin_profiles')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      document.getElementById('admins-loading').style.display = 'none';
+      if (error) { console.error(error); return; }
+      allAdmins = data || [];
+      renderAdminList();
+    }
+
+    function renderAdminList() {
+      document.getElementById('admins-table').style.display = 'table';
+      document.getElementById('admins-body').innerHTML = allAdmins.map(a => {
+        const isRoot = a.role === 'root_admin';
+        const isSelf = currentAdmin && a.id === currentAdmin.id;
+        return `
+        <tr>
+          <td>${esc(a.email)}${isSelf ? ' <span style="color:var(--muted);font-size:.7rem;">(you)</span>' : ''}</td>
+          <td><span class="role-badge ${isRoot ? 'root' : 'normal'}">${isRoot ? '★ Root Admin' : 'Admin'}</span></td>
+          <td>${a.is_active ? '<span class="status-pill confirmed">Active</span>' : '<span class="status-pill rejected">Disabled</span>'}</td>
+          <td>${formatDate(a.created_at)}</td>
+          <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            ${isRoot ? `<span style="font-size:.68rem;color:var(--muted);">Protected</span>` : `
+              <button class="btn btn-outline" style="padding:.35rem .7rem;font-size:.6rem;" onclick="changeAdminRole('${a.id}','root_admin')">Promote to Root</button>
+              <button class="btn btn-outline" style="padding:.35rem .7rem;font-size:.6rem;" onclick="setAdminActive('${a.id}', ${!a.is_active})">${a.is_active ? 'Disable' : 'Enable'}</button>
+              <button class="delete-btn" onclick="removeAdminAccount('${a.id}')" title="Remove">✕</button>
+            `}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function addAdminAccount() {
+      const email = document.getElementById('new-admin-email').value.trim();
+      const errEl = document.getElementById('add-admin-error');
+      errEl.style.display = 'none';
+      if (!email) return showToast('⚠️ Enter an email address.');
+
+      const { error } = await sb.rpc('add_admin', { p_email: email });
+      if (error) {
+        errEl.textContent = error.message;
+        errEl.style.display = 'block';
+        return;
+      }
+      document.getElementById('new-admin-email').value = '';
+      showToast('✅ Admin added.');
+      loadAdminList();
+    }
+
+    async function changeAdminRole(targetId, newRole) {
+      if (!confirm(`Change this admin's role to ${newRole === 'root_admin' ? 'Root Admin' : 'Admin'}?`)) return;
+      const { error } = await sb.rpc('change_admin_role', { p_target_id: targetId, p_new_role: newRole });
+      if (error) { showToast('❌ ' + error.message); return; }
+      showToast('✅ Role updated.');
+      loadAdminList();
+    }
+
+    async function setAdminActive(targetId, active) {
+      const { error } = await sb.rpc('set_admin_active', { p_target_id: targetId, p_active: active });
+      if (error) { showToast('❌ ' + error.message); return; }
+      showToast(active ? '✅ Admin enabled.' : '🔒 Admin disabled.');
+      loadAdminList();
+    }
+
+    async function removeAdminAccount(targetId) {
+      if (!confirm('Remove this admin? They will lose dashboard access immediately.')) return;
+      const { error } = await sb.rpc('remove_admin', { p_target_id: targetId });
+      if (error) { showToast('❌ ' + error.message); return; }
+      showToast('Admin removed.');
+      loadAdminList();
+    }
+
+    async function loadSettings() {
+      const { data } = await sb.from('app_settings').select('key, value').eq('key', 'payment_window_minutes').maybeSingle();
+      if (data) document.getElementById('setting-payment-window').value = data.value;
+    }
+
+    async function saveSettings() {
+      const val = document.getElementById('setting-payment-window').value;
+      const { error } = await sb.rpc('update_setting', { p_key: 'payment_window_minutes', p_value: String(val) });
+      if (error) { showToast('❌ ' + error.message); return; }
+      showToast('✅ Settings saved.');
     }
 
     /* Escape helper */

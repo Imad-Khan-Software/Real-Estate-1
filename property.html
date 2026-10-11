@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gemland Property Advisor — Islamabad</title>
+  <title>Property Listings — Gem Group Property Advisor</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -18,6 +18,7 @@
       <a href="index.html">Home</a>
       <a href="property.html" class="active">Real Estate</a>
       <a href="lodges.html">Lodges</a>
+      <a href="#contact-cta">List Your Property</a>
     </nav>
   </header>
 
@@ -26,16 +27,65 @@
     <!-- PAGE HEADER -->
     <div class="section-header">
       <span class="eyebrow">Property Advisor</span>
-      <h1 class="section-title">Property <em>Listings</em></h1>
+      <h1 class="section-title">Find Your <em>Perfect</em> Property</h1>
       <div class="gold-rule"></div>
-      <p class="section-sub">Residential plots &amp; commercial shops across Abbotabad prime sectors. Inquire instantly via WhatsApp.</p>
+      <p class="section-sub">Residential plots, commercial shops &amp; flexible installment plans across Abbotabad's prime sectors. Inquire instantly via WhatsApp.</p>
     </div>
 
-    <!-- FILTER BAR -->
+    <!-- MOBILE FILTER TOGGLE -->
+    <button class="btn btn-outline mobile-filter-toggle" onclick="toggleDrawer()">🔍 Search &amp; Filter</button>
+
+    <!-- SEARCH / FILTER PANEL -->
+    <div class="search-panel drawer" id="search-panel">
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="f-location" type="text" placeholder="e.g. G-13, Islamabad" oninput="renderProperties()" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select" id="f-category" onchange="renderProperties()">
+          <option value="all">All</option>
+          <option value="Residential">Residential</option>
+          <option value="Commercial">Commercial</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Purpose</label>
+        <select class="form-select" id="f-purpose" onchange="renderProperties()">
+          <option value="all">Buy or Rent</option>
+          <option value="Sale">Buy</option>
+          <option value="Rent">Rent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Min Price (PKR)</label>
+        <input class="form-input" id="f-min" type="number" placeholder="0" min="0" oninput="renderProperties()" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Max Price (PKR)</label>
+        <input class="form-input" id="f-max" type="number" placeholder="Any" min="0" oninput="renderProperties()" />
+      </div>
+      <div class="search-panel-full">
+        <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
+      </div>
+    </div>
+
+    <!-- CATEGORY QUICK-FILTER -->
     <div class="filter-bar" role="group" aria-label="Filter properties">
       <button class="filter-btn active" data-filter="all">All</button>
       <button class="filter-btn" data-filter="Residential">Residential</button>
       <button class="filter-btn" data-filter="Commercial">Commercial</button>
+      <button class="filter-btn" data-filter="featured">★ Featured</button>
+    </div>
+
+    <!-- RESULTS TOOLBAR -->
+    <div class="results-toolbar">
+      <p class="results-count" id="results-count">Loading properties…</p>
+      <select class="sort-select" id="sort-select" onchange="renderProperties()">
+        <option value="newest">Sort: Newest</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+      </select>
     </div>
 
     <!-- PROPERTY GRID -->
@@ -47,8 +97,19 @@
     <div class="card-grid" id="prop-grid" style="display:none;"></div>
 
     <p id="prop-empty" style="display:none; text-align:center; color:var(--muted); padding:3rem; font-size:.85rem; letter-spacing:.1em;">
-      No properties found in this category.
+      No properties match your search. Try adjusting your filters.
     </p>
+
+    <!-- LIST YOUR PROPERTY CTA -->
+    <div class="section-header" id="contact-cta" style="padding-top:1rem;">
+      <span class="eyebrow">Have a Property to Sell or Rent?</span>
+      <h2 class="section-title">List It <em>With Us</em></h2>
+      <div class="gold-rule"></div>
+      <p class="section-sub">Reach serious buyers and tenants. Message our advisory team on WhatsApp and we'll take it from there.</p>
+      <a class="btn btn-whatsapp" style="margin-top:1rem;" href="https://wa.me/923185512803?text=Hi%2C%20I%27d%20like%20to%20list%20my%20property%20with%20Gem%20Group." target="_blank" rel="noopener">
+        💬 List Your Property
+      </a>
+    </div>
 
   </div><!-- /page-content -->
 
@@ -85,14 +146,35 @@
       renderProperties();
     }
 
-    /* ── Render filtered list ── */
+    /* ── Apply filters + sort, then render ── */
     function renderProperties() {
       const grid  = document.getElementById('prop-grid');
       const empty = document.getElementById('prop-empty');
+      const count = document.getElementById('results-count');
 
-      const filtered = activeFilter === 'all'
-        ? allProperties
-        : allProperties.filter(p => p.category === activeFilter);
+      const loc     = (document.getElementById('f-location')?.value || '').trim().toLowerCase();
+      const cat     = document.getElementById('f-category')?.value || 'all';
+      const purpose = document.getElementById('f-purpose')?.value || 'all';
+      const min     = parseFloat(document.getElementById('f-min')?.value) || 0;
+      const max     = parseFloat(document.getElementById('f-max')?.value) || Infinity;
+      const sort    = document.getElementById('sort-select')?.value || 'newest';
+
+      let filtered = allProperties.filter(p => {
+        if (activeFilter === 'featured' && !p.is_featured) return false;
+        if (activeFilter !== 'all' && activeFilter !== 'featured' && p.category !== activeFilter) return false;
+        if (cat !== 'all' && p.category !== cat) return false;
+        if (purpose !== 'all' && (p.purpose || 'Sale') !== purpose) return false;
+        if (loc && !`${p.location} ${p.title}`.toLowerCase().includes(loc)) return false;
+        const price = Number(p.total_price) || 0;
+        if (price < min || price > max) return false;
+        return true;
+      });
+
+      if (sort === 'price-asc')  filtered = filtered.slice().sort((a,b) => (a.total_price||0) - (b.total_price||0));
+      if (sort === 'price-desc') filtered = filtered.slice().sort((a,b) => (b.total_price||0) - (a.total_price||0));
+      // 'newest' is already the default order from the query
+
+      count.innerHTML = `<strong>${filtered.length}</strong> ${filtered.length === 1 ? 'property' : 'properties'} available`;
 
       if (filtered.length === 0) {
         grid.style.display  = 'none';
@@ -125,23 +207,35 @@
         ? `<p class="prop-desc">${escHtml(p.description)}</p>`
         : '';
 
+      const metaBits = [];
+      if (p.bedrooms)  metaBits.push(`🛏 ${p.bedrooms} Bed`);
+      if (p.bathrooms) metaBits.push(`🛁 ${p.bathrooms} Bath`);
+      metaBits.push(`📐 ${escHtml(p.size)}`);
+      const metaHTML = `<div class="prop-meta-row">${metaBits.map(m => `<span>${m}</span>`).join('')}</div>`;
+
+      const featuredBadge = p.is_featured ? `<span class="badge-featured">★ Featured</span>` : `<span></span>`;
+      const purposeBadge  = `<span class="badge-purpose">${escHtml(p.purpose === 'Rent' ? 'For Rent' : 'For Sale')}</span>`;
+
       return `
         <div class="prop-card" data-category="${escHtml(p.category)}">
+          <div class="prop-badge-row">${featuredBadge}${purposeBadge}</div>
           ${imgHTML}
           <div class="prop-card-body">
-            <span class="prop-tag">${escHtml(p.category)}</span>
+            <span class="prop-tag">${escHtml(p.property_type || p.category)}</span>
             <h3 class="prop-title">${escHtml(p.title)}</h3>
-            <p class="prop-location">📍 ${escHtml(p.location)} &nbsp;·&nbsp; ${escHtml(p.size)}</p>
+            <p class="prop-location">📍 ${escHtml(p.location)}</p>
+            ${metaHTML}
             <div class="prop-divider"></div>
             <div class="prop-price-row">
               <span class="prop-price">${formatPKR(p.total_price)}</span>
-              <span class="prop-price-label">Total</span>
+              <span class="prop-price-label">${p.purpose === 'Rent' ? 'Per Month' : 'Total'}</span>
             </div>
             ${installHTML}
             ${descHTML}
-            <a class="btn btn-whatsapp" href="${waLink}" target="_blank" rel="noopener">
-              💬 Inquire via WhatsApp
-            </a>
+            <div class="prop-actions">
+              <a class="btn btn-outline" href="property-detail.html?id=${encodeURIComponent(p.id)}">View Details</a>
+              <a class="btn btn-whatsapp" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
+            </div>
           </div>
         </div>`;
     }
@@ -165,6 +259,30 @@
         renderProperties();
       });
     });
+
+    function clearFilters() {
+      document.getElementById('f-location').value = '';
+      document.getElementById('f-category').value = 'all';
+      document.getElementById('f-purpose').value = 'all';
+      document.getElementById('f-min').value = '';
+      document.getElementById('f-max').value = '';
+      document.getElementById('sort-select').value = 'newest';
+      activeFilter = 'all';
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.filter-btn[data-filter="all"]').classList.add('active');
+      renderProperties();
+    }
+
+    function toggleDrawer() {
+      document.getElementById('search-panel').classList.toggle('open');
+    }
+
+    /* ── Support ?location= deep link from the homepage quick search ── */
+    (function prefillFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const loc = params.get('location');
+      if (loc) document.getElementById('f-location').value = loc;
+    })();
 
     /* ── Init ── */
     loadProperties();

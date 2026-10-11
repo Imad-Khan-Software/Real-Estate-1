@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Details — Gem Group Property Advisor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <a class="logo-wrap" href="index.html">
+      <img src="" alt="" onerror="this.style.display='none'" />
+      <div class="logo-text">Property<small>Advisor</small></div>
+    </a>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="property.html" class="active">Real Estate</a>
+      <a href="lodges.html">Lodges</a>
+    </nav>
+  </header>
+
+  <div class="page-content">
+    <div class="detail-wrap">
+
+      <p class="detail-breadcrumb">
+        <a href="index.html">Home</a> &nbsp;/&nbsp; <a href="property.html">Real Estate</a> &nbsp;/&nbsp; <span id="bc-title">Property</span>
+      </p>
+
+      <div id="detail-loading" class="loading" style="padding:4rem 0;">
+        <div class="spinner"></div><span>Loading property…</span>
+      </div>
+
+      <p id="detail-notfound" style="display:none; text-align:center; color:var(--muted); padding:4rem 0;">
+        This property could not be found. It may have been removed or is no longer active.
+        <br /><br />
+        <a class="btn btn-outline" href="property.html">← Back to Listings</a>
+      </p>
+
+      <div id="detail-content" style="display:none;">
+
+        <!-- GALLERY -->
+        <img id="gallery-main" class="gallery-main" src="" alt="" onerror="this.style.display='none'" />
+        <div class="gallery-thumbs" id="gallery-thumbs"></div>
+
+        <div class="detail-grid">
+          <!-- LEFT: MAIN INFO -->
+          <div>
+            <div class="detail-head">
+              <div>
+                <span class="prop-tag" id="d-type">Plot</span>
+                <h1 class="detail-title" id="d-title">Property Title</h1>
+                <p class="prop-location" id="d-location">📍 Location</p>
+              </div>
+              <div style="text-align:right;">
+                <div class="detail-price" id="d-price">PKR 0</div>
+                <span class="prop-price-label" id="d-price-label">Total</span>
+              </div>
+            </div>
+
+            <div class="detail-meta" id="d-meta"></div>
+
+            <h2 class="detail-section-title">Description</h2>
+            <p class="detail-desc" id="d-desc">No description provided.</p>
+
+            <div id="d-features-wrap">
+              <h2 class="detail-section-title">Property Features</h2>
+              <div class="feature-grid" id="d-features"></div>
+            </div>
+
+            <p style="font-size:.7rem;color:var(--muted);margin-top:2rem;">
+              Property ID: <span id="d-id"></span> &nbsp;·&nbsp; Status: <span id="d-status"></span>
+            </p>
+          </div>
+
+          <!-- RIGHT: AGENT + INQUIRY -->
+          <div>
+            <div class="agent-card">
+              <div class="agent-row">
+                <div class="agent-avatar" id="agent-initial">A</div>
+                <div>
+                  <div class="agent-name" id="agent-name">Gem Group Advisory Team</div>
+                  <div class="agent-role">Listing Agent</div>
+                </div>
+              </div>
+              <a class="btn btn-whatsapp" id="agent-whatsapp" href="#" target="_blank" rel="noopener">💬 Chat on WhatsApp</a>
+              <a class="btn btn-outline" id="agent-call" href="#">📞 Call Agent</a>
+            </div>
+
+            <div class="inquiry-card">
+              <h3>Interested in this property?</h3>
+              <div class="form-group">
+                <label class="form-label">Name</label>
+                <input class="form-input" id="inq-name" type="text" placeholder="Your full name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" id="inq-email" type="email" placeholder="you@example.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-input" id="inq-phone" type="tel" placeholder="03XX-XXXXXXX" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Message</label>
+                <input class="form-input" id="inq-message" type="text" placeholder="I'd like to know more about..." />
+              </div>
+              <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="submitInquiry()">Send Inquiry</button>
+              <p class="error-msg" id="inq-error" style="display:none;">Please fill in your name and phone number.</p>
+              <p id="inq-success" style="display:none;color:var(--gold-light);font-size:.75rem;margin-top:.75rem;text-align:center;">
+                ✅ Thank you — our team will contact you shortly.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /page-content -->
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <span>© 2026 Imad Khan</span>
+    <span><a href="property.html">← Back to Listings</a> &nbsp;·&nbsp; <a href="https://wa.me/923185512803" target="_blank">WhatsApp</a></span>
+  </footer>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    const propertyId = new URLSearchParams(window.location.search).get('id');
+    let currentProperty = null;
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function loadProperty() {
+      if (!propertyId) return showNotFound();
+
+      const { data, error } = await sb
+        .from('properties')
+        .select('*')
+        .eq('id', propertyId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      document.getElementById('detail-loading').style.display = 'none';
+
+      if (error || !data) return showNotFound();
+
+      currentProperty = data;
+      renderProperty(data);
+    }
+
+    function showNotFound() {
+      document.getElementById('detail-loading').style.display = 'none';
+      document.getElementById('detail-notfound').style.display = 'block';
+    }
+
+    function renderProperty(p) {
+      document.getElementById('detail-content').style.display = 'block';
+      document.getElementById('bc-title').textContent = p.title;
+      document.title = p.title + ' — Gem Group Property Advisor';
+
+      /* Gallery: primary image + extra images */
+      const images = [p.image_url, ...(p.images || [])].filter(Boolean);
+      const main = document.getElementById('gallery-main');
+      if (images.length) {
+        main.src = images[0];
+        main.alt = p.title;
+      } else {
+        main.style.display = 'none';
+      }
+      const thumbs = document.getElementById('gallery-thumbs');
+      thumbs.innerHTML = images.map((img, i) =>
+        `<img src="${escHtml(img)}" class="${i === 0 ? 'active' : ''}" onclick="switchImage('${escHtml(img)}', this)" />`
+      ).join('');
+
+      document.getElementById('d-type').textContent = p.property_type || p.category;
+      document.getElementById('d-title').textContent = p.title;
+      document.getElementById('d-location').textContent = '📍 ' + p.location;
+      document.getElementById('d-price').textContent = formatPKR(p.total_price);
+      document.getElementById('d-price-label').textContent = p.purpose === 'Rent' ? 'Per Month' : 'Total Price';
+      document.getElementById('d-desc').textContent = p.description || 'No description provided yet — contact the agent for full details.';
+      document.getElementById('d-id').textContent = p.id;
+      document.getElementById('d-status').textContent = p.status || 'Available';
+
+      /* Meta row */
+      const meta = [];
+      if (p.bedrooms)  meta.push(['🛏', p.bedrooms, 'Bedrooms']);
+      if (p.bathrooms) meta.push(['🛁', p.bathrooms, 'Bathrooms']);
+      meta.push(['📐', p.size, 'Area']);
+      meta.push(['🏷', p.purpose === 'Rent' ? 'Rent' : 'Sale', 'Purpose']);
+      document.getElementById('d-meta').innerHTML = meta.map(([icon, val, lbl]) =>
+        `<div class="meta-item"><strong>${icon} ${escHtml(String(val))}</strong><span>${lbl}</span></div>`
+      ).join('');
+
+      /* Features (only shown if present) */
+      const featWrap = document.getElementById('d-features-wrap');
+      if (p.features && p.features.length) {
+        document.getElementById('d-features').innerHTML = p.features.map(f =>
+          `<div class="feature-chip">✓ ${escHtml(f)}</div>`
+        ).join('');
+      } else {
+        featWrap.style.display = 'none';
+      }
+
+      if (p.installment) {
+        document.getElementById('d-desc').textContent += ` Flexible installment plan available: ${p.installment}.`;
+      }
+
+      /* Agent card */
+      const agentName = p.agent_name || 'Gem Group Advisory Team';
+      document.getElementById('agent-name').textContent = agentName;
+      document.getElementById('agent-initial').textContent = agentName.charAt(0).toUpperCase();
+      const waNumber = p.agent_phone || p.whatsapp_no || WHATSAPP_NUMBER;
+      const waText = encodeURIComponent(`Hi, I am interested in the ${p.title} (${p.size}) in ${p.location}. Please share more details.`);
+      document.getElementById('agent-whatsapp').href = `https://wa.me/${waNumber}?text=${waText}`;
+      document.getElementById('agent-call').href = `tel:+${waNumber}`;
+    }
+
+    function switchImage(src, el) {
+      document.getElementById('gallery-main').src = src;
+      document.getElementById('gallery-main').style.display = 'block';
+      document.querySelectorAll('.gallery-thumbs img').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    async function submitInquiry() {
+      const name = document.getElementById('inq-name').value.trim();
+      const email = document.getElementById('inq-email').value.trim();
+      const phone = document.getElementById('inq-phone').value.trim();
+      const message = document.getElementById('inq-message').value.trim();
+      const errEl = document.getElementById('inq-error');
+      const okEl = document.getElementById('inq-success');
+      errEl.style.display = 'none';
+      okEl.style.display = 'none';
+
+      if (!name || !phone) {
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const { error } = await sb.from('inquiries').insert({
+        property_id: currentProperty ? currentProperty.id : null,
+        name, email: email || null, phone,
+        message: message || null
+      });
+
+      if (error) {
+        console.error('Inquiry error:', error);
+        showToast('❌ Could not send inquiry. Please try WhatsApp instead.');
+        return;
+      }
+
+      okEl.style.display = 'block';
+      ['inq-name', 'inq-email', 'inq-phone', 'inq-message'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+    }
+
+    loadProperty();
+  </script>
+</body>
+</html>

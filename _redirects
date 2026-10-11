@@ -1,0 +1,3 @@
+# Makes /admin open admin.html directly without exposing the .html extension.
+# Netlify reads this file automatically on deploy — no other config needed.
+/admin   /admin.html   200

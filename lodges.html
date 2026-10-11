@@ -79,53 +79,104 @@
   <!-- BOOKING MODAL -->
   <div class="modal-overlay" id="booking-modal" role="dialog" aria-modal="true" aria-labelledby="modal-room-name">
     <div class="modal-box">
-      <button class="modal-close" onclick="closeModal('booking-modal')" aria-label="Close">&times;</button>
-      <h2 class="modal-title" id="modal-room-name">Reserve Room</h2>
-      <p class="modal-subtitle" id="modal-room-rate"></p>
+      <button class="modal-close" onclick="closeBookingModal()" aria-label="Close">&times;</button>
 
-      <div class="form-group">
-        <label class="form-label" for="guest-name">Your name</label>
-        <input class="form-input" id="guest-name" type="text" placeholder="e.g. Ahmed Khan" />
-      </div>
+      <!-- STEP 1: booking details -->
+      <div id="modal-step-1">
+        <h2 class="modal-title" id="modal-room-name">Reserve Room</h2>
+        <p class="modal-subtitle" id="modal-room-rate"></p>
 
-      <div class="form-group">
-        <label class="form-label" for="guest-phone">Phone number</label>
-        <input class="form-input" id="guest-phone" type="tel" placeholder="e.g. 0300-1234567" />
-      </div>
-
-      <div class="form-row">
         <div class="form-group">
-          <label class="form-label" for="check-in">Check-in date</label>
-          <input class="form-input" id="check-in" type="text" placeholder="Select date" readonly />
+          <label class="form-label" for="guest-name">Your name</label>
+          <input class="form-input" id="guest-name" type="text" placeholder="e.g. Ahmed Khan" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="guest-phone">Phone number</label>
+          <input class="form-input" id="guest-phone" type="tel" placeholder="e.g. 0300-1234567" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="check-in">Check-in date</label>
+            <input class="form-input" id="check-in" type="text" placeholder="Select date" readonly />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="check-out">Check-out date</label>
+            <input class="form-input" id="check-out" type="text" placeholder="Select date" readonly />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="guest-count">Number of guests</label>
+          <input class="form-input" id="guest-count" type="number" min="1" value="1" />
+        </div>
+
+        <div id="booking-summary" style="
+          background:rgba(15,35,24,.6); border:1px solid var(--border-gold);
+          border-radius:6px; padding:1rem; margin-bottom:1.25rem;
+          font-size:.8rem; color:var(--muted-light); display:none;
+        ">
+          <div style="display:flex; justify-content:space-between; margin-bottom:.4rem;">
+            <span>Nights</span><span id="sum-nights" style="color:var(--on-dark);">—</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Total</span><span id="sum-total" style="color:var(--gold-light); font-size:.95rem;font-family:'Cormorant Garamond',serif;">—</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="booking-notes">Special requests (optional)</label>
+          <input class="form-input" id="booking-notes" type="text" placeholder="e.g. Early check-in, extra pillows…" />
+        </div>
+
+        <button class="btn btn-gold" id="confirm-btn" onclick="submitBooking()" style="width:100%; justify-content:center;">
+          Reserve &amp; Continue to Payment
+        </button>
+        <p id="booking-error" style="color:#f08080; font-size:.75rem; margin-top:.75rem; display:none;"></p>
+      </div>
+
+      <!-- STEP 2: payment instructions + submission -->
+      <div id="modal-step-2" style="display:none;">
+        <h2 class="modal-title">Booking Created</h2>
+        <p class="modal-subtitle" id="step2-booking-id"></p>
+
+        <div class="booking-result-box" id="booking-result"></div>
+
+        <p style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem;">
+          Send the exact amount using one of the methods below, then submit your payment details.
+        </p>
+
+        <div class="pay-method-grid" id="pay-method-grid"></div>
+        <div class="pay-account-box" id="pay-account-box" style="display:none;"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="pay-ref">Transaction / Reference ID</label>
+          <input class="form-input" id="pay-ref" type="text" placeholder="e.g. 1234567890" />
         </div>
         <div class="form-group">
-          <label class="form-label" for="check-out">Check-out date</label>
-          <input class="form-input" id="check-out" type="text" placeholder="Select date" readonly />
+          <label class="form-label" for="pay-amount">Amount paid (PKR)</label>
+          <input class="form-input" id="pay-amount" type="number" min="0" />
         </div>
-      </div>
-
-      <div id="booking-summary" style="
-        background:rgba(15,35,24,.6); border:1px solid var(--border-gold);
-        border-radius:6px; padding:1rem; margin-bottom:1.25rem;
-        font-size:.8rem; color:var(--muted-light); display:none;
-      ">
-        <div style="display:flex; justify-content:space-between; margin-bottom:.4rem;">
-          <span>Nights</span><span id="sum-nights" style="color:var(--on-dark);">—</span>
+        <div class="form-group">
+          <label class="form-label">Payment screenshot</label>
+          <div class="file-upload-wrap" id="file-upload-wrap" onclick="document.getElementById('pay-screenshot').click()">
+            📎 Click to upload screenshot (JPG/PNG)
+          </div>
+          <input type="file" id="pay-screenshot" accept="image/*" style="display:none;" onchange="onScreenshotChosen(this)" />
         </div>
-        <div style="display:flex; justify-content:space-between;">
-          <span>Total</span><span id="sum-total" style="color:var(--gold-light); font-size:.95rem;font-family:'Cormorant Garamond',serif;">—</span>
+
+        <div class="payment-warning">
+          ⚠ Your booking will remain <strong>Verification Pending</strong> until our team confirms the
+          actual payment in our account. A screenshot alone does not confirm your reservation.
         </div>
-      </div>
 
-      <div class="form-group">
-        <label class="form-label" for="booking-notes">Special requests (optional)</label>
-        <input class="form-input" id="booking-notes" type="text" placeholder="e.g. Early check-in, extra pillows…" />
+        <button class="btn btn-gold" id="submit-payment-btn" onclick="submitPaymentProof()" style="width:100%; justify-content:center;">
+          Submit Payment Details
+        </button>
+        <p id="payment-error" style="color:#f08080; font-size:.75rem; margin-top:.75rem; display:none;"></p>
+        <p id="payment-success" style="display:none;color:var(--gold-light);font-size:.8rem;margin-top:1rem;text-align:center;line-height:1.6;"></p>
       </div>
-
-      <button class="btn btn-gold" id="confirm-btn" onclick="submitBooking()" style="width:100%; justify-content:center;">
-        Confirm Reservation
-      </button>
-      <p id="booking-error" style="color:#f08080; font-size:.75rem; margin-top:.75rem; display:none;"></p>
     </div>
   </div>
 
@@ -143,14 +194,23 @@
     let allRooms    = [];
     let allBookings = [];
     let activeRoom  = null;
+    let activeBookingId = null;
+    let selectedPayMethod = null;
+    let uploadedScreenshotPath = null;
     let fpIn = null, fpOut = null;
+
+    /* Booking statuses that actually occupy/hold a room */
+    const ACTIVE_HOLD_STATUSES = ['pending_payment', 'payment_submitted', 'confirmed'];
 
     /* ── Load rooms + bookings simultaneously ── */
     async function loadData() {
       try {
+        /* Release any expired payment holds before computing availability */
+        await sb.rpc('expire_stale_bookings');
+
         const [roomRes, bookRes] = await Promise.all([
           sb.from('rooms').select('*').eq('is_active', true).order('created_at'),
-          sb.from('bookings').select('room_id, check_in, check_out, status').neq('status','cancelled')
+          sb.from('bookings').select('room_id, check_in, check_out, booking_status').in('booking_status', ACTIVE_HOLD_STATUSES)
         ]);
         allRooms    = roomRes.data || [];
         allBookings = bookRes.data || [];
@@ -162,14 +222,14 @@
       renderRooms();
     }
 
-    /* ── Get booked date ranges for a specific room ── */
+    /* ── Get booked date ranges for a specific room (any active hold) ── */
     function getBlockedRanges(roomId) {
       return allBookings
         .filter(b => b.room_id === roomId)
         .map(b => ({ from: b.check_in, to: b.check_out }));
     }
 
-    /* ── Is this room occupied right now (today falls inside a booking)? ── */
+    /* ── Is this room occupied right now (today falls inside an active hold)? ── */
     function isOccupiedToday(roomId) {
       const today = new Date().toISOString().slice(0, 10);
       return allBookings.some(b =>
@@ -241,6 +301,13 @@
       activeRoom = allRooms.find(r => r.id === roomId);
       if (!activeRoom) return;
 
+      activeBookingId = null;
+      selectedPayMethod = null;
+      uploadedScreenshotPath = null;
+
+      document.getElementById('modal-step-1').style.display = 'block';
+      document.getElementById('modal-step-2').style.display = 'none';
+
       document.getElementById('modal-room-name').textContent = activeRoom.name;
       document.getElementById('modal-room-rate').textContent =
         `${formatPKR(activeRoom.nightly_rate)} per night`;
@@ -249,6 +316,7 @@
       ['guest-name','guest-phone','check-in','check-out','booking-notes'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      document.getElementById('guest-count').value = 1;
       document.getElementById('booking-summary').style.display = 'none';
       document.getElementById('booking-error').style.display = 'none';
 
@@ -288,6 +356,12 @@
       openModal('booking-modal');
     }
 
+    function closeBookingModal() {
+      closeModal('booking-modal');
+      /* Refresh availability in case a booking was created/expired during this visit */
+      loadData();
+    }
+
     /* ── Update the price summary ── */
     function updateSummary() {
       const inVal  = document.getElementById('check-in').value;
@@ -307,12 +381,13 @@
       }
     }
 
-    /* ── Submit booking to Supabase ── */
+    /* ── STEP 1 → create the booking via the secure RPC (server computes price) ── */
     async function submitBooking() {
       const name    = document.getElementById('guest-name').value.trim();
       const phone   = document.getElementById('guest-phone').value.trim();
       const checkIn = document.getElementById('check-in').value;
       const checkOut= document.getElementById('check-out').value;
+      const guests  = parseInt(document.getElementById('guest-count').value) || 1;
       const notes   = document.getElementById('booking-notes').value.trim();
       const errEl   = document.getElementById('booking-error');
 
@@ -324,50 +399,175 @@
         return;
       }
 
-      const nights = Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000);
-      if (nights < 1) {
-        errEl.textContent   = 'Check-out must be after check-in.';
-        errEl.style.display = 'block';
-        return;
-      }
-
-      const total = nights * activeRoom.nightly_rate;
-      const btn   = document.getElementById('confirm-btn');
+      const btn = document.getElementById('confirm-btn');
       btn.textContent = 'Processing…';
       btn.disabled    = true;
 
       try {
-        const { error } = await sb.from('bookings').insert({
-          room_id:      activeRoom.id,
-          guest_name:   name,
-          guest_phone:  phone,
-          check_in:     checkIn,
-          check_out:    checkOut,
-          total_amount: total,
-          notes:        notes || null,
-          status:       'confirmed'
+        /* Never send a price from the browser — the database computes the
+           total from the room's CURRENT rate inside create_booking(). */
+        const { data, error } = await sb.rpc('create_booking', {
+          p_room_id: activeRoom.id,
+          p_guest_name: name,
+          p_guest_phone: phone,
+          p_check_in: checkIn,
+          p_check_out: checkOut,
+          p_guests: guests,
+          p_notes: notes || null
+        });
+
+        if (error) throw error;
+        const result = Array.isArray(data) ? data[0] : data;
+
+        activeBookingId = result.booking_id;
+        showPaymentStep(result, checkIn, checkOut);
+
+      } catch (err) {
+        console.error('Booking error:', err);
+        errEl.textContent   = err.message || 'Could not create booking. Please try different dates.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.textContent = 'Reserve & Continue to Payment';
+        btn.disabled    = false;
+      }
+    }
+
+    /* ── STEP 2: show payment instructions for the booking just created ── */
+    function showPaymentStep(result, checkIn, checkOut) {
+      document.getElementById('modal-step-1').style.display = 'none';
+      document.getElementById('modal-step-2').style.display = 'block';
+
+      document.getElementById('step2-booking-id').textContent =
+        `Booking #${result.booking_id.slice(0, 8).toUpperCase()}`;
+
+      const expiresIn = Math.max(0, Math.round((new Date(result.expires_at) - new Date()) / 60000));
+
+      document.getElementById('booking-result').innerHTML = `
+        <div class="row"><span>Room</span><strong>${esc(activeRoom.name)}</strong></div>
+        <div class="row"><span>Check-in</span><strong>${esc(checkIn)}</strong></div>
+        <div class="row"><span>Check-out</span><strong>${esc(checkOut)}</strong></div>
+        <div class="row"><span>Nights</span><strong>${result.nights}</strong></div>
+        <div class="row total-row"><span>Total Due</span><span>${formatPKR(result.total_amount)}</span></div>
+        <div style="margin-top:.6rem;">${bookingStatusBadge('pending_payment')}</div>
+      `;
+
+      document.getElementById('pay-amount').value = result.total_amount;
+
+      /* Payment method picker, sourced from supabase.js PAYMENT_METHODS */
+      selectedPayMethod = null;
+      document.getElementById('pay-account-box').style.display = 'none';
+      document.getElementById('pay-method-grid').innerHTML = PAYMENT_METHODS.map(m =>
+        `<div class="pay-method-card" onclick="selectPayMethod('${esc(m.id)}', this)">${esc(m.title)}</div>`
+      ).join('');
+
+      document.getElementById('pay-ref').value = '';
+      uploadedScreenshotPath = null;
+      document.getElementById('file-upload-wrap').textContent = '📎 Click to upload screenshot (JPG/PNG)';
+      document.getElementById('file-upload-wrap').classList.remove('has-file');
+      document.getElementById('payment-error').style.display = 'none';
+      document.getElementById('payment-success').style.display = 'none';
+
+      const noteEl = document.createElement('p');
+      noteEl.className = 'countdown-note';
+      noteEl.textContent = `This hold expires in about ${expiresIn} minutes if payment isn't submitted.`;
+      document.getElementById('booking-result').appendChild(noteEl);
+    }
+
+    function selectPayMethod(id, el) {
+      selectedPayMethod = PAYMENT_METHODS.find(m => m.id === id);
+      document.querySelectorAll('.pay-method-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+
+      const box = document.getElementById('pay-account-box');
+      if (!selectedPayMethod) { box.style.display = 'none'; return; }
+
+      box.style.display = 'block';
+      box.innerHTML = `
+        <strong>${esc(selectedPayMethod.title)}</strong><br/>
+        Account Title: <strong>${esc(selectedPayMethod.account_title)}</strong><br/>
+        Account Number: <strong>${esc(selectedPayMethod.account_number)}</strong>
+        ${selectedPayMethod.bank_name ? `<br/>Bank: <strong>${esc(selectedPayMethod.bank_name)}</strong>` : ''}
+      `;
+    }
+
+    /* ── Upload the screenshot to the PRIVATE 'payment-proofs' bucket ── */
+    async function onScreenshotChosen(input) {
+      const file = input.files[0];
+      const wrap = document.getElementById('file-upload-wrap');
+      if (!file) return;
+
+      wrap.textContent = '⏳ Uploading…';
+      const path = `${activeBookingId}/${Date.now()}-${file.name}`.replace(/\s+/g, '_');
+
+      const { error } = await sb.storage.from('payment-proofs').upload(path, file, { upsert: false });
+      if (error) {
+        console.error('Upload error:', error);
+        wrap.textContent = '❌ Upload failed — click to try again';
+        wrap.classList.remove('has-file');
+        uploadedScreenshotPath = null;
+        return;
+      }
+
+      uploadedScreenshotPath = path;
+      wrap.textContent = `✅ ${file.name}`;
+      wrap.classList.add('has-file');
+    }
+
+    /* ── STEP 2 → submit payment proof via the secure RPC ── */
+    async function submitPaymentProof() {
+      const ref    = document.getElementById('pay-ref').value.trim();
+      const amount = parseFloat(document.getElementById('pay-amount').value);
+      const errEl  = document.getElementById('payment-error');
+      const okEl   = document.getElementById('payment-success');
+      errEl.style.display = 'none';
+      okEl.style.display  = 'none';
+
+      if (!selectedPayMethod) {
+        errEl.textContent = 'Please select a payment method.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!amount || amount <= 0) {
+        errEl.textContent = 'Please enter the amount you paid.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!uploadedScreenshotPath) {
+        errEl.textContent = 'Please upload your payment screenshot.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const btn = document.getElementById('submit-payment-btn');
+      btn.textContent = 'Submitting…';
+      btn.disabled = true;
+
+      try {
+        const { error } = await sb.rpc('submit_payment', {
+          p_booking_id: activeBookingId,
+          p_method: selectedPayMethod.id,
+          p_transaction_ref: ref || null,
+          p_amount: amount,
+          p_screenshot_path: uploadedScreenshotPath
         });
 
         if (error) throw error;
 
-        /* Add newly blocked dates to local array so calendar updates */
-        allBookings.push({
-          room_id:  activeRoom.id,
-          check_in: checkIn,
-          check_out: checkOut,
-          status:   'confirmed'
-        });
-
-        closeModal('booking-modal');
-        showToast(`✅ Reservation confirmed for ${name}!`);
+        okEl.innerHTML = `✅ Payment details submitted. Your booking is now ${bookingStatusBadge('payment_submitted')}<br/>Our team will verify your payment and confirm shortly.`;
+        okEl.style.display = 'block';
+        btn.style.display = 'none';
+        document.getElementById('pay-ref').disabled = true;
+        document.getElementById('pay-amount').disabled = true;
 
       } catch (err) {
-        console.error('Booking error:', err);
-        errEl.textContent   = 'Could not save booking. Please try again.';
+        console.error('Payment submission error:', err);
+        errEl.textContent = err.message || 'Could not submit payment. Please try again.';
         errEl.style.display = 'block';
       } finally {
-        btn.textContent = 'Confirm Reservation';
-        btn.disabled    = false;
+        if (btn.style.display !== 'none') {
+          btn.textContent = 'Submit Payment Details';
+          btn.disabled = false;
+        }
       }
     }
 
